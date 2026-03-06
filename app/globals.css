@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #1A1411;
+  --color-cream: #FAF5EF;
+  --color-accent: #C4943B;
+  --color-text: #2C2420;
+  --color-text-light: #8A7E76;
+  --color-terracotta: #C17C60;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  color: var(--color-text);
+  background-color: var(--color-cream);
+}
+
+h1, h2, h3, h4 {
+  font-family: 'DM Serif Display', serif;
+}
