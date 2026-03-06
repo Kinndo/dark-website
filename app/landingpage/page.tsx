@@ -24,7 +24,7 @@ export default function HomePage() {
     return () => observer.disconnect();
   }, []);
 
-  const addToCart = (name, price) => {
+ const addToCart = (name: string, price: number) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.name === name);
       if (existing) return prev.map((item) => (item.name === name ? { ...item, qty: item.qty + 1 } : item));
