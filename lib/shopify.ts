@@ -11,6 +11,11 @@ export const VARIANTS = {
   RETINOL: "gid://shopify/ProductVariant/59040204882001",        // Retinol & Peptide — $29.90
 } as const;
 
+// Selling plan IDs (fetched from Shopify Storefront API)
+export const SELLING_PLANS = {
+  BUNDLE_MONTHLY: "gid://shopify/SellingPlan/1889796177", // Monthly subscription — 20% off ($79/mo)
+} as const;
+
 export interface ShopifyCartLine {
   lineId: string;
   merchandiseId: string;
@@ -86,8 +91,14 @@ async function storeFetch(query: string, variables: Record<string, unknown> = {}
   return res.json();
 }
 
+export interface CartLineInput {
+  merchandiseId: string;
+  quantity: number;
+  sellingPlanId?: string;
+}
+
 export async function createCart(
-  lines: { merchandiseId: string; quantity: number }[]
+  lines: CartLineInput[]
 ): Promise<ShopifyCart> {
   const { data } = await storeFetch(
     `mutation cartCreate($input: CartInput!) {
@@ -103,7 +114,7 @@ export async function createCart(
 
 export async function addCartLines(
   cartId: string,
-  lines: { merchandiseId: string; quantity: number }[]
+  lines: CartLineInput[]
 ): Promise<ShopifyCart> {
   const { data } = await storeFetch(
     `mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {

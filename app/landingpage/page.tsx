@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   VARIANTS,
+  SELLING_PLANS,
   createCart,
   addCartLines,
   removeCartLines,
@@ -41,16 +42,18 @@ export default function HomePage() {
     setCart(updated.lines);
   };
 
-  const addToCart = async (merchandiseId: string) => {
+  const addToCart = async (merchandiseId: string, sellingPlanId?: string) => {
     setCartLoading(true);
     try {
+      const line = sellingPlanId ? { merchandiseId, quantity: 1, sellingPlanId } : { merchandiseId, quantity: 1 };
       const existing = cart.find((item) => item.merchandiseId === merchandiseId);
       if (!cartId) {
-        syncCart(await createCart([{ merchandiseId, quantity: 1 }]));
-      } else if (existing) {
+        syncCart(await createCart([line]));
+      } else if (existing && !sellingPlanId) {
+        // Only increment qty for one-time; subscription always creates a new line
         syncCart(await updateCartLines(cartId, [{ id: existing.lineId, quantity: existing.qty + 1 }]));
       } else {
-        syncCart(await addCartLines(cartId, [{ merchandiseId, quantity: 1 }]));
+        syncCart(await addCartLines(cartId, [line]));
       }
       setCartOpen(true);
     } catch (err) {
@@ -652,12 +655,12 @@ export default function HomePage() {
 
               {/* Add to Cart button */}
               <button
-                onClick={() => addToCart(VARIANTS.BUNDLE)}
+                onClick={() => addToCart(VARIANTS.BUNDLE, isSubscription ? SELLING_PLANS.BUNDLE_MONTHLY : undefined)}
                 disabled={cartLoading}
                 className="accent-btn"
                 style={{ width: "100%", padding: "20px", fontSize: 15, marginBottom: 16, textAlign: "center", opacity: cartLoading ? 0.7 : 1 }}
               >
-                {cartLoading ? "Adding…" : "Add to Cart — $99"}
+                {cartLoading ? "Adding…" : `Add to Cart — $${isSubscription ? 79 : 99}`}
               </button>
 
               {/* Trust micro-copy */}

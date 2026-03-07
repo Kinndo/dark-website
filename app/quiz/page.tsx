@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { VARIANTS, createCart } from "@/lib/shopify";
+import { VARIANTS, SELLING_PLANS, createCart } from "@/lib/shopify";
 
 // ─── Data ───
 const questions = [
@@ -1414,7 +1414,10 @@ export default function DarkQuiz() {
                     onClick={async () => {
                       setCartLoading(true);
                       try {
-                        const shopifyCart = await createCart([{ merchandiseId: VARIANTS.BUNDLE, quantity: 1 }]);
+                        const line = isSubscription
+                          ? { merchandiseId: VARIANTS.BUNDLE, quantity: 1, sellingPlanId: SELLING_PLANS.BUNDLE_MONTHLY }
+                          : { merchandiseId: VARIANTS.BUNDLE, quantity: 1 };
+                        const shopifyCart = await createCart([line]);
                         setCheckoutUrl(shopifyCart.checkoutUrl);
                         setAddedToCart(true);
                       } catch (err) {
@@ -1443,7 +1446,7 @@ export default function DarkQuiz() {
                       opacity: cartLoading ? 0.7 : 1,
                     }}
                   >
-                    {cartLoading ? "Adding…" : "Add to Cart — $99"}
+                    {cartLoading ? "Adding…" : `Add to Cart — $${isSubscription ? 79 : 99}`}
                   </button>
                 ) : (
                   <div style={{ position: "relative" }}>
