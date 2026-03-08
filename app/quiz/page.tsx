@@ -414,7 +414,14 @@ export default function DarkQuiz() {
       setSelected(null);
     }
     if (step === totalQuestions + 1) {
-      // Email step → analyzing
+      // Email step → fire-and-forget Klaviyo subscribe, then go to analyzing
+      if (email.includes("@")) {
+        fetch("/api/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, firstName }),
+        }).catch(() => {/* silently ignore errors */});
+      }
       setStep(totalQuestions + 2);
       return;
     }
