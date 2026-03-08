@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { VARIANTS, SELLING_PLANS, createCart } from "@/lib/shopify";
 
 // ─── Data ───
 const questions = [
@@ -382,8 +383,10 @@ export default function DarkQuiz() {
   const [eduOpen, setEduOpen] = useState(false);
   const [animKey, setAnimKey] = useState(0);
   const [analyzePhase, setAnalyzePhase] = useState(0);
-  const [isSubscription, setIsSubscription] = useState(true);
+  const [isSubscription, setIsSubscription] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [cartLoading, setCartLoading] = useState(false);
 
   const totalQuestions = questions.length;
   const isQuestion = step >= 1 && step <= totalQuestions;
@@ -1408,7 +1411,22 @@ export default function DarkQuiz() {
                 {/* Add to Cart / Added confirmation */}
                 {!addedToCart ? (
                   <button
-                    onClick={() => setAddedToCart(true)}
+                    onClick={async () => {
+                      setCartLoading(true);
+                      try {
+                        const line = isSubscription
+                          ? { merchandiseId: VARIANTS.BUNDLE, quantity: 1, sellingPlanId: SELLING_PLANS.BUNDLE_MONTHLY }
+                          : { merchandiseId: VARIANTS.BUNDLE, quantity: 1 };
+                        const shopifyCart = await createCart([line]);
+                        setCheckoutUrl(shopifyCart.checkoutUrl);
+                        setAddedToCart(true);
+                      } catch (err) {
+                        console.error("addToCart failed:", err);
+                      } finally {
+                        setCartLoading(false);
+                      }
+                    }}
+                    disabled={cartLoading}
                     style={{
                       width: "100%",
                       background: "#fff",
@@ -1421,13 +1439,14 @@ export default function DarkQuiz() {
                       fontFamily: "'DM Sans', sans-serif",
                       letterSpacing: "0.06em",
                       textTransform: "uppercase",
-                      cursor: "pointer",
+                      cursor: cartLoading ? "not-allowed" : "pointer",
                       position: "relative",
                       transition: "all 0.2s ease",
                       boxShadow: "0 4px 16px rgba(255,255,255,0.1)",
+                      opacity: cartLoading ? 0.7 : 1,
                     }}
                   >
-                    Add to Cart — ${isSubscription ? 79 : 99}
+                    {cartLoading ? "Adding…" : `Add to Cart — $${isSubscription ? 79 : 99}`}
                   </button>
                 ) : (
                   <div style={{ position: "relative" }}>
@@ -1448,8 +1467,8 @@ export default function DarkQuiz() {
                     >
                       ✓ Added to Cart
                     </div>
-                    <a
-                      href="/landingpage"
+                    <button
+                      onClick={() => checkoutUrl && window.location.assign(checkoutUrl)}
                       style={{
                         display: "block",
                         width: "100%",
@@ -1463,14 +1482,14 @@ export default function DarkQuiz() {
                         fontFamily: "'DM Sans', sans-serif",
                         letterSpacing: "0.04em",
                         textTransform: "uppercase",
-                        textDecoration: "none",
                         textAlign: "center",
                         marginTop: 10,
+                        cursor: "pointer",
                         transition: "all 0.2s ease",
                       }}
                     >
                       Continue to Checkout →
-                    </a>
+                    </button>
                   </div>
                 )}
 

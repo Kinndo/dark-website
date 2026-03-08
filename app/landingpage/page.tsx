@@ -1,10 +1,22 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import {
+  VARIANTS,
+  SELLING_PLANS,
+  createCart,
+  addCartLines,
+  removeCartLines,
+  updateCartLines,
+  type ShopifyCartLine,
+} from "@/lib/shopify";
 
 export default function HomePage() {
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState<ShopifyCartLine[]>([]);
+  const [cartId, setCartId] = useState<string | null>(null);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [cartLoading, setCartLoading] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
-  const [isSubscription, setIsSubscription] = useState(true);
+  const [isSubscription, setIsSubscription] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [visibleSections, setVisibleSections] = useState({});
 
@@ -24,26 +36,61 @@ export default function HomePage() {
     return () => observer.disconnect();
   }, []);
 
- const addToCart = (name: string, price: number) => {
-    setCart((prev) => {
-      const existing = prev.find((item) => item.name === name);
-      if (existing) return prev.map((item) => (item.name === name ? { ...item, qty: item.qty + 1 } : item));
-      return [...prev, { name, price, qty: 1 }];
-    });
-    setCartOpen(true);
+  const syncCart = (updated: { id: string; checkoutUrl: string; lines: ShopifyCartLine[] }) => {
+    setCartId(updated.id);
+    setCheckoutUrl(updated.checkoutUrl);
+    setCart(updated.lines);
   };
-  const removeFromCart = (name) => setCart((prev) => prev.filter((item) => item.name !== name));
-  const updateQty = (name, delta) => {
-    setCart((prev) =>
-      prev
-        .map((item) => {
-          if (item.name !== name) return item;
-          const newQty = item.qty + delta;
-          return newQty <= 0 ? item : { ...item, qty: newQty };
-        })
-        .filter((item) => item.qty > 0)
-    );
+
+  const addToCart = async (merchandiseId: string, sellingPlanId?: string) => {
+    setCartLoading(true);
+    try {
+      const line = sellingPlanId ? { merchandiseId, quantity: 1, sellingPlanId } : { merchandiseId, quantity: 1 };
+      const existing = cart.find((item) => item.merchandiseId === merchandiseId);
+      if (!cartId) {
+        syncCart(await createCart([line]));
+      } else if (existing && !sellingPlanId) {
+        // Only increment qty for one-time; subscription always creates a new line
+        syncCart(await updateCartLines(cartId, [{ id: existing.lineId, quantity: existing.qty + 1 }]));
+      } else {
+        syncCart(await addCartLines(cartId, [line]));
+      }
+      setCartOpen(true);
+    } catch (err) {
+      console.error("addToCart failed:", err);
+    } finally {
+      setCartLoading(false);
+    }
   };
+
+  const removeFromCart = async (lineId: string) => {
+    if (!cartId) return;
+    setCartLoading(true);
+    try {
+      syncCart(await removeCartLines(cartId, [lineId]));
+    } catch (err) {
+      console.error("removeFromCart failed:", err);
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  const updateQty = async (lineId: string, delta: number) => {
+    if (!cartId) return;
+    const item = cart.find((i) => i.lineId === lineId);
+    if (!item) return;
+    const newQty = item.qty + delta;
+    if (newQty <= 0) { removeFromCart(lineId); return; }
+    setCartLoading(true);
+    try {
+      syncCart(await updateCartLines(cartId, [{ id: lineId, quantity: newQty }]));
+    } catch (err) {
+      console.error("updateQty failed:", err);
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 
@@ -258,16 +305,16 @@ export default function HomePage() {
                 </div>
               ) : (
                 cart.map((item) => (
-                  <div key={item.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0", borderBottom: "1px solid #f0f0f0" }}>
+                  <div key={item.lineId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0", borderBottom: "1px solid #f0f0f0" }}>
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: 15, fontWeight: 700, color: "#111", margin: "0 0 4px" }}>{item.name}</p>
                       <p style={{ fontSize: 14, color: "#888", margin: 0 }}>${item.price}</p>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <button onClick={() => updateQty(item.name, -1)} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                      <button onClick={() => updateQty(item.lineId, -1)} disabled={cartLoading} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
                       <span style={{ fontSize: 14, fontWeight: 600, minWidth: 16, textAlign: "center" }}>{item.qty}</span>
-                      <button onClick={() => updateQty(item.name, 1)} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-                      <button onClick={() => removeFromCart(item.name)} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 16, marginLeft: 4 }}>✕</button>
+                      <button onClick={() => updateQty(item.lineId, 1)} disabled={cartLoading} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #ddd", background: "#fff", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                      <button onClick={() => removeFromCart(item.lineId)} disabled={cartLoading} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 16, marginLeft: 4 }}>✕</button>
                     </div>
                   </div>
                 ))
@@ -279,7 +326,13 @@ export default function HomePage() {
                   <span style={{ fontSize: 16, fontWeight: 700, color: "#111" }}>Total</span>
                   <span style={{ fontSize: 16, fontWeight: 700, color: "#111" }}>${cartTotal}</span>
                 </div>
-                <button className="dark-btn" style={{ width: "100%", padding: "16px" }}>Checkout</button>
+                <button
+                  onClick={() => checkoutUrl && window.location.assign(checkoutUrl)}
+                  className="dark-btn"
+                  style={{ width: "100%", padding: "16px", opacity: checkoutUrl ? 1 : 0.6 }}
+                >
+                  {cartLoading ? "Updating…" : "Checkout"}
+                </button>
                 <p style={{ fontSize: 12, color: "#999", textAlign: "center", marginTop: 10, marginBottom: 0 }}>Free shipping · 60-day guarantee</p>
               </div>
             )}
@@ -602,11 +655,12 @@ export default function HomePage() {
 
               {/* Add to Cart button */}
               <button
-                onClick={() => addToCart(isSubscription ? "3-Serum System (Subscription)" : "3-Serum System (One-Time)", isSubscription ? 79 : 99)}
+                onClick={() => addToCart(VARIANTS.BUNDLE, isSubscription ? SELLING_PLANS.BUNDLE_MONTHLY : undefined)}
+                disabled={cartLoading}
                 className="accent-btn"
-                style={{ width: "100%", padding: "20px", fontSize: 15, marginBottom: 16, textAlign: "center" }}
+                style={{ width: "100%", padding: "20px", fontSize: 15, marginBottom: 16, textAlign: "center", opacity: cartLoading ? 0.7 : 1 }}
               >
-                Add to Cart — ${isSubscription ? 79 : 99}
+                {cartLoading ? "Adding…" : `Add to Cart — $${isSubscription ? 79 : 99}`}
               </button>
 
               {/* Trust micro-copy */}
