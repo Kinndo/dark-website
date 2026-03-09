@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
               type: "profile",
               attributes: {
                 email,
-                ...(firstName ? { first_name: firstName } : {}),
                 subscriptions: {
                   email: {
                     marketing: {
