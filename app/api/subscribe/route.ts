@@ -10,7 +10,10 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.KLAVIYO_API_KEY;
   const listId = process.env.KLAVIYO_LIST_ID;
 
+  console.log("[subscribe] email:", email, "apiKey set:", !!apiKey, "listId set:", !!listId);
+
   if (!apiKey || !listId) {
+    console.error("[subscribe] Missing KLAVIYO_API_KEY or KLAVIYO_LIST_ID env vars");
     return NextResponse.json({ error: "Missing config" }, { status: 500 });
   }
 
