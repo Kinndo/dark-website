@@ -9,6 +9,8 @@ export default function BrandPage() {
   const [cartLoading, setCartLoading] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [emailValue, setEmailValue] = useState("");
+  const [emailStatus, setEmailStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   const galleryImages = [
     { src: "/a.png", alt: "DARK 3-Serum System — all three bottles" },
@@ -247,13 +249,13 @@ export default function BrandPage() {
               className={`reveal ${isVis("s1") ? "visible" : ""}`}
             >
               <p style={{ fontSize: 28, lineHeight: 1.6, color: "var(--body-text)", fontStyle: "italic", fontFamily: "var(--serif)", margin: "0 0 28px" }}>
-                She didn&rsquo;t set out to build a brand.
+                I didn&rsquo;t set out to build a brand.
               </p>
               <p style={{ fontSize: 28, lineHeight: 1.6, color: "var(--body-text)", fontStyle: "italic", fontFamily: "var(--serif)", margin: "0 0 28px" }}>
-                She set out to fix her own skin &mdash; so her daughter wouldn&rsquo;t have to grow up feeling the same way she did.
+                I set out to fix my own skin &mdash; so my daughter wouldn&rsquo;t have to grow up feeling the same way I did.
               </p>
               <p style={{ fontSize: 28, lineHeight: 1.6, color: "var(--body-text)", fontStyle: "italic", fontFamily: "var(--serif)", margin: 0 }}>
-                What she found along the way took two years, a lot of wasted money, and more than a few products that made things worse before they got better.
+                What I found along the way took two years, a lot of wasted money, and more than a few products that made things worse before they got better.
               </p>
             </div>
           </div>
@@ -270,22 +272,22 @@ export default function BrandPage() {
               className={`reveal ${isVis("s2") ? "visible" : ""}`}
             >
               <p className="editorial-label">The Struggle</p>
-              <h2 className="editorial-heading">Everything she tried that didn&rsquo;t work</h2>
+              <h2 className="editorial-heading">Everything I tried that didn&rsquo;t work</h2>
 
               <p>
-                She started where most people start. The products with the biggest promises and the prettiest packaging. Brightening serums. Dark spot correctors. Vitamin C everything.
+                I started where most people start. The products with the biggest promises and the prettiest packaging. Brightening serums. Dark spot correctors. Vitamin C everything.
               </p>
               <p>
-                Some of them burned. Some of them did nothing. One left her skin looking grey in natural light &mdash; a shade she&rsquo;d never had before she started &ldquo;treating&rdquo; it.
+                Some of them burned. Some of them did nothing. One left my skin looking grey in natural light &mdash; a shade I&rsquo;d never had before I started &ldquo;treating&rdquo; it.
               </p>
               <p>
-                She noticed something after a while. The before and afters on every product she tried showed the same thing: lighter skin. The research behind most of them was built around lighter skin. The &ldquo;universal&rdquo; solutions were universal for everyone except her.
+                I noticed something after a while. The before and afters on every product I tried showed the same thing: lighter skin. The research behind most of them was built around lighter skin. The &ldquo;universal&rdquo; solutions were universal for everyone except me.
               </p>
               <p>
-                Every time she had a reaction &mdash; redness, irritation, a new breakout &mdash; her spots got darker. She didn&rsquo;t know it then, but that&rsquo;s how melanin-rich skin works. Inflammation triggers more melanin production. The wrong product doesn&rsquo;t just fail to help. It actively makes things worse.
+                Every time I had a reaction &mdash; redness, irritation, a new breakout &mdash; my spots got darker. I didn&rsquo;t know it then, but that&rsquo;s how melanin-rich skin works. Inflammation triggers more melanin production. The wrong product doesn&rsquo;t just fail to help. It actively makes things worse.
               </p>
               <p style={{ marginBottom: 0 }}>
-                She spent two years and more money than she wants to admit figuring that out.
+                I spent two years and more money than I want to admit figuring that out.
               </p>
             </div>
 
@@ -318,25 +320,25 @@ export default function BrandPage() {
               className={`reveal ${isVis("s3") ? "visible" : ""}`}
             >
               <p className="editorial-label">The Discovery</p>
-              <h2 className="editorial-heading">What she learned about her skin</h2>
+              <h2 className="editorial-heading">What I learned about my skin</h2>
 
               <p>
-                Once she understood why things were failing, everything looked different.
+                Once I understood why things were failing, everything looked different.
               </p>
               <p>
                 Melanin-rich skin isn&rsquo;t difficult. It isn&rsquo;t stubborn. It just operates by a different set of rules &mdash; rules that the majority of the skincare industry has never bothered to learn.
               </p>
               <p>
-                When skin like hers experiences inflammation &mdash; from a breakout, from irritation, from a harsh chemical it wasn&rsquo;t built to handle &mdash; it responds by producing more melanin. That&rsquo;s where the dark spots come from. Not from the original blemish. From the skin&rsquo;s own defense response, triggered over and over again by the wrong products.
+                When skin like mine experiences inflammation &mdash; from a breakout, from irritation, from a harsh chemical it wasn&rsquo;t built to handle &mdash; it responds by producing more melanin. That&rsquo;s where the dark spots come from. Not from the original blemish. From the skin&rsquo;s own defense response, triggered over and over again by the wrong products.
               </p>
               <p>
-                She also learned that treating hyperpigmentation on deeper skin tones isn&rsquo;t a one-step process. You have to interrupt melanin production at the source. You have to target existing spots directly. And you have to support the skin&rsquo;s ability to resurface and renew &mdash; because without that third step, the first two don&rsquo;t hold.
+                I also learned that treating hyperpigmentation on deeper skin tones isn&rsquo;t a one-step process. You have to interrupt melanin production at the source. You have to target existing spots directly. And you have to support the skin&rsquo;s ability to resurface and renew &mdash; because without that third step, the first two don&rsquo;t hold.
               </p>
               <p>
                 Three steps. In the right order. With the right concentrations for skin that actually produces melanin.
               </p>
               <p style={{ marginBottom: 0 }}>
-                That&rsquo;s what nobody had ever put together before. Not for her. Not for women like her.
+                That&rsquo;s what nobody had ever put together before. Not for me. Not for women like me.
               </p>
             </div>
           </div>
@@ -355,47 +357,85 @@ export default function BrandPage() {
                 Get the routine
               </p>
               <p style={{ fontSize: 24, fontWeight: 400, color: "var(--body-text)", fontFamily: "var(--serif)", margin: "0 0 8px" }}>
-                Get the routine she uses
+                Get the routine I use
               </p>
               <p style={{ fontSize: 14, color: "var(--muted-text)", margin: "0 0 24px", lineHeight: 1.6 }}>
                 Join the waitlist for skincare advice built for melanin-rich skin.
               </p>
-              <div className="email-row" style={{ display: "flex", maxWidth: 440, margin: "0 auto", gap: 0 }}>
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  readOnly
-                  style={{
-                    flex: 1,
-                    padding: "14px 18px",
-                    border: "1px solid rgba(26,20,16,0.12)",
-                    borderRight: "none",
-                    borderRadius: "8px 0 0 8px",
-                    fontSize: 14,
-                    fontFamily: "var(--sans)",
-                    outline: "none",
-                    background: "#fff",
-                    color: "var(--body-text)",
-                  }}
-                />
-                <button
-                  style={{
-                    padding: "14px 28px",
-                    background: "var(--body-text)",
-                    color: "var(--page-base)",
-                    border: "none",
-                    borderRadius: "0 8px 8px 0",
-                    fontSize: 13,
-                    fontWeight: 800,
-                    letterSpacing: 1,
-                    textTransform: "uppercase",
-                    cursor: "pointer",
-                    fontFamily: "var(--sans)",
+              {emailStatus === "success" ? (
+                <p style={{ fontSize: 16, color: "var(--body-text)", fontFamily: "var(--sans)", fontWeight: 600, margin: 0 }}>
+                  ✓ You&rsquo;re in. Check your inbox.
+                </p>
+              ) : (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!emailValue || !emailValue.includes("@")) return;
+                    setEmailStatus("loading");
+                    try {
+                      const res = await fetch("/api/subscribe", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: emailValue }),
+                      });
+                      if (res.ok) {
+                        setEmailStatus("success");
+                      } else {
+                        setEmailStatus("error");
+                      }
+                    } catch {
+                      setEmailStatus("error");
+                    }
                   }}
                 >
-                  Join
-                </button>
-              </div>
+                  <div className="email-row" style={{ display: "flex", maxWidth: 440, margin: "0 auto", gap: 0 }}>
+                    <input
+                      type="email"
+                      placeholder="Enter your email"
+                      value={emailValue}
+                      onChange={(e) => { setEmailValue(e.target.value); if (emailStatus === "error") setEmailStatus("idle"); }}
+                      required
+                      style={{
+                        flex: 1,
+                        padding: "14px 18px",
+                        border: emailStatus === "error" ? "1px solid #c44" : "1px solid rgba(26,20,16,0.12)",
+                        borderRight: "none",
+                        borderRadius: "8px 0 0 8px",
+                        fontSize: 14,
+                        fontFamily: "var(--sans)",
+                        outline: "none",
+                        background: "#fff",
+                        color: "var(--body-text)",
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={emailStatus === "loading"}
+                      style={{
+                        padding: "14px 28px",
+                        background: "var(--body-text)",
+                        color: "var(--page-base)",
+                        border: "none",
+                        borderRadius: "0 8px 8px 0",
+                        fontSize: 13,
+                        fontWeight: 800,
+                        letterSpacing: 1,
+                        textTransform: "uppercase",
+                        cursor: emailStatus === "loading" ? "not-allowed" : "pointer",
+                        fontFamily: "var(--sans)",
+                        opacity: emailStatus === "loading" ? 0.6 : 1,
+                      }}
+                    >
+                      {emailStatus === "loading" ? "..." : "Join"}
+                    </button>
+                  </div>
+                  {emailStatus === "error" && (
+                    <p style={{ fontSize: 13, color: "#c44", marginTop: 12, marginBottom: 0, fontFamily: "var(--sans)" }}>
+                      Something went wrong. Please try again.
+                    </p>
+                  )}
+                </form>
+              )}
             </div>
           </div>
         </section>
@@ -415,14 +455,14 @@ export default function BrandPage() {
               className={`reveal ${isVis("s4") ? "visible" : ""}`}
             >
               <p className="editorial-label">The Reveal</p>
-              <h2 className="editorial-heading">The system she built</h2>
+              <h2 className="editorial-heading">The system I built</h2>
 
-              <p>So she built it herself.</p>
+              <p>So I built it myself.</p>
               <p>
-                Not in a lab coat. Not with a team of investors behind her. Starting with obsessive research, a long list of failed products, and a very clear understanding of what her skin actually needed &mdash; because she&rsquo;d spent two years learning it the hard way.
+                Not in a lab coat. Not with a team of investors behind me. Starting with obsessive research, a long list of failed products, and a very clear understanding of what my skin actually needed &mdash; because I&rsquo;d spent two years learning it the hard way.
               </p>
               <p>
-                The result is <span style={{ fontWeight: 600 }}>DARK</span>. A three-serum system built specifically for melanin-rich skin, designed to treat hyperpigmentation the way her skin actually works &mdash; not the way the industry assumed it did.
+                The result is <span style={{ fontWeight: 600 }}>DARK</span>. A three-serum system built specifically for melanin-rich skin, designed to treat hyperpigmentation the way my skin actually works &mdash; not the way the industry assumed it did.
               </p>
               <p style={{ marginBottom: 48 }}>
                 This isn&rsquo;t a general skincare line with a diverse marketing campaign. It&rsquo;s a protocol. Built from the ground up for one purpose: to work for skin like yours.
@@ -498,7 +538,7 @@ export default function BrandPage() {
               </div>
 
               <p style={{ fontSize: 17, lineHeight: 1.8, color: "var(--muted-text)", textAlign: "center", marginTop: 48, fontFamily: "var(--sans)", fontStyle: "italic" }}>
-                Used together, in order, they work the way her skin works. Not against it.
+                Used together, in order, they work the way your skin works. Not against it.
               </p>
             </div>
           </div>
@@ -515,10 +555,10 @@ export default function BrandPage() {
             >
               <p className="editorial-label" style={{ textAlign: "center" }}>Results</p>
               <h2 className="editorial-heading" style={{ textAlign: "center", marginBottom: 12 }}>
-                Women who look like her, with results
+                Women who look like me, with results
               </h2>
               <p style={{ fontSize: 17, lineHeight: 1.8, color: "var(--muted-text)", textAlign: "center", marginBottom: 56, fontFamily: "var(--sans)", fontStyle: "italic" }}>
-                She&rsquo;s not the only one who found it.
+                I&rsquo;m not the only one who found it.
               </p>
 
               {/* Before & After collage — tape label aesthetic */}
@@ -574,7 +614,7 @@ export default function BrandPage() {
             >
               <p className="editorial-label" style={{ textAlign: "center" }}>Get Started</p>
               <h2 className="editorial-heading" style={{ textAlign: "center", marginBottom: 48 }}>
-                Get the system she built
+                Get the system I built
               </h2>
 
               {/* Story intro */}
@@ -586,7 +626,7 @@ export default function BrandPage() {
                   You&rsquo;ve stood in a pharmacy aisle reading the back of something that promised results. You&rsquo;ve spent money you didn&rsquo;t want to spend on something that didn&rsquo;t do what it said. You&rsquo;ve blamed yourself when it didn&rsquo;t work.
                 </p>
                 <p style={{ fontSize: 17, lineHeight: 1.85, color: "var(--muted-text)", marginBottom: 24, fontFamily: "var(--sans)" }}>
-                  She&rsquo;s been there too. Every single step of it.
+                  I&rsquo;ve been there too. Every single step of it.
                 </p>
                 <p style={{ fontSize: 17, lineHeight: 1.85, color: "var(--muted-text)", marginBottom: 0, fontFamily: "var(--sans)" }}>
                   Which is why DARK doesn&rsquo;t ask you to just trust it. It gives you 60 days to know.
@@ -599,10 +639,10 @@ export default function BrandPage() {
                   The 60-Day Skin Guarantee
                 </h3>
                 <p style={{ fontSize: 16, lineHeight: 1.8, color: "var(--muted-text)", marginBottom: 20, fontFamily: "var(--sans)" }}>
-                  Use all three serums, in order, every day for 60 days. If you don&rsquo;t see a real, visible difference in your hyperpigmentation &mdash; not perfect skin, just real progress &mdash; she&rsquo;ll refund every dollar. No forms. No hoops. No questions.
+                  Use all three serums, in order, every day for 60 days. If you don&rsquo;t see a real, visible difference in your hyperpigmentation &mdash; not perfect skin, just real progress &mdash; I&rsquo;ll refund every dollar. No forms. No hoops. No questions.
                 </p>
                 <p style={{ fontSize: 16, lineHeight: 1.8, color: "var(--body-text)", fontFamily: "var(--sans)", fontStyle: "italic", margin: 0 }}>
-                  She spent two years wasting money on things that didn&rsquo;t work. She&rsquo;s not going to let you do the same.
+                  I spent two years wasting money on things that didn&rsquo;t work. I&rsquo;m not going to let you do the same.
                 </p>
               </div>
 
@@ -615,7 +655,7 @@ export default function BrandPage() {
                   DARK is in its first run. The first 500 women who order get it at the founding price &mdash; a rate that will never be available again once this batch is gone.
                 </p>
                 <p style={{ fontSize: 17, lineHeight: 1.85, color: "var(--muted-text)", marginBottom: 0, fontFamily: "var(--sans)", fontStyle: "italic", textAlign: "center" }}>
-                  This isn&rsquo;t a sale. It&rsquo;s an invitation to be part of what she started.
+                  This isn&rsquo;t a sale. It&rsquo;s an invitation to be part of what I started.
                 </p>
               </div>
 
@@ -666,7 +706,7 @@ export default function BrandPage() {
                 <div style={{ background: "var(--card-bg)", borderRadius: 16, padding: "36px 28px", display: "flex", flexDirection: "column", position: "relative", border: "2px solid var(--body-text)" }}>
                   {/* Recommended badge */}
                   <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", background: "var(--body-text)", color: "var(--page-base)", fontSize: 10, fontWeight: 800, letterSpacing: 1.5, textTransform: "uppercase", padding: "6px 18px", borderRadius: 100, fontFamily: "var(--sans)", whiteSpace: "nowrap" }}>
-                    Her recommendation
+                    My recommendation
                   </div>
 
                   {/* Product image */}
@@ -686,7 +726,7 @@ export default function BrandPage() {
                     <p style={{ margin: "0 0 8px" }}>Free shipping on every order, always. Cancel any time.</p>
                   </div>
                   <p style={{ fontSize: 14, lineHeight: 1.7, color: "var(--body-text)", fontFamily: "var(--sans)", fontStyle: "italic", marginBottom: 20 }}>
-                    This is the option she&rsquo;d choose. You&rsquo;re building a routine, not making a one-time purchase.
+                    This is the option I&rsquo;d choose. You&rsquo;re building a routine, not making a one-time purchase.
                   </p>
                   <button
                     onClick={async () => {
