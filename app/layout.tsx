@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { MetaPixel } from "@/components/meta-pixel";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "DARK — Skincare for Melanin-Rich Skin",
@@ -23,6 +24,7 @@ export default function RootLayout({
       <body>
         <MetaPixel />
         {children}
+        <Analytics />
       </body>
     </html>
   );
