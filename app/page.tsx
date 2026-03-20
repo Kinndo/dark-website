@@ -1,13 +1,15 @@
 "use client";
 import { useState } from "react";
+import { trackAddToCart, trackInitiateCheckout, trackViewContent, trackCTAClick } from "@/lib/meta-pixel";
 
 export default function HomePage() {
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [isSubscription, setIsSubscription] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
+
   const addToCart = (name, price) => {
+    trackAddToCart(name, price);
     setCart(prev => {
       const existing = prev.find(item => item.name === name);
       if (existing) {
@@ -124,7 +126,7 @@ export default function HomePage() {
                   <span style={{ fontSize: 16, fontWeight: 700, color: "#111" }}>Total</span>
                   <span style={{ fontSize: 16, fontWeight: 700, color: "#111" }}>${cartTotal}</span>
                 </div>
-                <button style={{ width: "100%", background: "#111", color: "#fff", border: "none", padding: "16px 0", borderRadius: 100, fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase" }}>Checkout</button>
+                <button onClick={() => trackInitiateCheckout(cartTotal, cartCount)} style={{ width: "100%", background: "#111", color: "#fff", border: "none", padding: "16px 0", borderRadius: 100, fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase" }}>Checkout</button>
                 <p style={{ fontSize: 12, color: "#999", textAlign: "center", marginTop: 10, marginBottom: 0 }}>Free shipping · 30-day guarantee</p>
               </div>
             )}
@@ -175,7 +177,7 @@ export default function HomePage() {
               The first 3-serum system clinically engineered to treat hyperpigmentation in melanin-rich skin. Safe, effective, and barrier-focused.
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
-              <button onClick={() => addToCart("3-Serum System Bundle (Subscription)", 79)} style={{ background: "#111", color: "#fff", border: "none", padding: "18px 44px", borderRadius: 100, fontSize: 13, fontWeight: 800, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase", transition: "background 0.2s ease" }} onMouseEnter={(e) => e.currentTarget.style.background = "#333"} onMouseLeave={(e) => e.currentTarget.style.background = "#111"}>Shop the System</button>
+              <button onClick={() => { trackCTAClick("Shop the System", "home"); addToCart("3-Serum System Bundle (Subscription)", 79); }} style={{ background: "#111", color: "#fff", border: "none", padding: "18px 44px", borderRadius: 100, fontSize: 13, fontWeight: 800, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase", transition: "background 0.2s ease" }} onMouseEnter={(e) => e.currentTarget.style.background = "#333"} onMouseLeave={(e) => e.currentTarget.style.background = "#111"}>Shop the System</button>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <span style={{ fontSize: 14, fontWeight: 800, color: "#111" }}>Subscribe & Save $20</span>
                 <span style={{ fontSize: 13, color: "#888", fontWeight: 500 }}>90-Day Money Back Guarantee</span>
@@ -241,7 +243,7 @@ export default function HomePage() {
         <div style={{ maxWidth: 800, margin: "0 auto", textAlign: "center" }}>
           <h3 className="title-text" style={{ fontSize: 32, fontWeight: 800, color: "#111", marginBottom: 16, fontFamily: "Georgia, 'Times New Roman', serif" }}>Not sure where to start?</h3>
           <p style={{ fontSize: 16, color: "#666", maxWidth: 500, margin: "0 auto 32px", lineHeight: 1.7 }}>Take our 2-minute clinical assessment to get a personalized regimen based on your specific hyperpigmentation triggers.</p>
-          <a href="/quiz" style={{ display: "inline-block", background: "#111", color: "#fff", border: "none", padding: "16px 44px", borderRadius: 100, fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase", boxShadow: "0 8px 16px rgba(0,0,0,0.1)", textDecoration: "none" }}>Start Assessment</a>
+          <a href="/quiz" onClick={() => trackCTAClick("Start Assessment", "home")} style={{ display: "inline-block", background: "#111", color: "#fff", border: "none", padding: "16px 44px", borderRadius: 100, fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase", boxShadow: "0 8px 16px rgba(0,0,0,0.1)", textDecoration: "none" }}>Start Assessment</a>
         </div>
       </section>
 
@@ -276,7 +278,7 @@ export default function HomePage() {
             ))}
           </div>
           <div style={{ textAlign: "center", marginTop: 36 }}>
-            <button onClick={() => addToCart("3-Serum System Bundle (Subscription)", 79)} style={{ background: "#111", color: "#fff", border: "none", padding: "16px 40px", borderRadius: 100, fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase" }}>Start Your Transformation</button>
+            <button onClick={() => { trackCTAClick("Start Your Transformation", "home"); addToCart("3-Serum System Bundle (Subscription)", 79); }} style={{ background: "#111", color: "#fff", border: "none", padding: "16px 40px", borderRadius: 100, fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase" }}>Start Your Transformation</button>
           </div>
         </div>
       </section>

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { trackEmailSignup, trackViewContent, trackCTAClick, trackShareClick } from "@/lib/meta-pixel";
 
 export default function HyperpigmentationArticlePage() {
   const [emailValue, setEmailValue] = useState("");
@@ -101,7 +102,7 @@ export default function HyperpigmentationArticlePage() {
                 { label: "Pinterest", icon: "P" },
                 { label: "Link", icon: "\uD83D\uDD17" },
               ].map((s) => (
-                <a key={s.label} href="#" title={`Share on ${s.label}`} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: "#666", background: "#fff" }}>
+                <a key={s.label} href="#" title={`Share on ${s.label}`} onClick={() => trackShareClick(s.label)} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: "#666", background: "#fff" }}>
                   {s.icon}
                 </a>
               ))}
@@ -195,6 +196,7 @@ export default function HyperpigmentationArticlePage() {
                       });
                       if (res.ok) {
                         setEmailStatus("success");
+                        trackEmailSignup("article-hyperpigmentation");
                       } else {
                         setEmailStatus("error");
                       }
@@ -287,7 +289,7 @@ export default function HyperpigmentationArticlePage() {
 
             {/* CTA — links to brand page */}
             <div style={{ textAlign: "center", padding: "24px 0 40px" }}>
-              <a href="/brand" style={{ display: "inline-block", fontSize: 22, fontWeight: 400, color: "#111", fontFamily: "'DM Serif Display', serif", fontStyle: "italic", borderBottom: "1px solid #111", paddingBottom: 4, transition: "opacity 0.2s ease" }}>
+              <a href="/brand" onClick={() => trackCTAClick("What I found", "article")} style={{ display: "inline-block", fontSize: 22, fontWeight: 400, color: "#111", fontFamily: "'DM Serif Display', serif", fontStyle: "italic", borderBottom: "1px solid #111", paddingBottom: 4, transition: "opacity 0.2s ease" }}>
                 What I found &rarr;
               </a>
             </div>

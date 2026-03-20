@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { trackAddToCart, trackInitiateCheckout, trackCTAClick } from "@/lib/meta-pixel";
 
 export default function HomePage() {
   const [cart, setCart] = useState([]);
@@ -25,6 +26,7 @@ export default function HomePage() {
   }, []);
 
  const addToCart = (name: string, price: number) => {
+    trackAddToCart(name, price);
     setCart((prev) => {
       const existing = prev.find((item) => item.name === name);
       if (existing) return prev.map((item) => (item.name === name ? { ...item, qty: item.qty + 1 } : item));
@@ -279,7 +281,7 @@ export default function HomePage() {
                   <span style={{ fontSize: 16, fontWeight: 700, color: "#111" }}>Total</span>
                   <span style={{ fontSize: 16, fontWeight: 700, color: "#111" }}>${cartTotal}</span>
                 </div>
-                <button className="dark-btn" style={{ width: "100%", padding: "16px" }}>Checkout</button>
+                <button onClick={() => trackInitiateCheckout(cartTotal, cartCount)} className="dark-btn" style={{ width: "100%", padding: "16px" }}>Checkout</button>
                 <p style={{ fontSize: 12, color: "#999", textAlign: "center", marginTop: 10, marginBottom: 0 }}>Free shipping · 60-day guarantee</p>
               </div>
             )}

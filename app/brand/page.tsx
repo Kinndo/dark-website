@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { VARIANTS, SELLING_PLANS, createCart } from "@/lib/shopify";
+import { trackAddToCart, trackInitiateCheckout, trackEmailSignup, trackViewContent, trackCTAClick } from "@/lib/meta-pixel";
 
 export default function BrandPage() {
   const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
@@ -380,6 +381,7 @@ export default function BrandPage() {
                       });
                       if (res.ok) {
                         setEmailStatus("success");
+                        trackEmailSignup("brand-page");
                       } else {
                         setEmailStatus("error");
                       }
@@ -683,6 +685,8 @@ export default function BrandPage() {
                     onClick={async () => {
                       setPurchaseType("one-time");
                       setCartLoading(true);
+                      trackAddToCart("3-Serum System Bundle (One-Time)", 79);
+                      trackCTAClick("Get the system — $79", "brand");
                       try {
                         const line = { merchandiseId: VARIANTS.BUNDLE, quantity: 1 };
                         const shopifyCart = await createCart([line]);
@@ -732,6 +736,8 @@ export default function BrandPage() {
                     onClick={async () => {
                       setPurchaseType("subscribe");
                       setCartLoading(true);
+                      trackAddToCart("3-Serum System Bundle (Subscription)", 67);
+                      trackCTAClick("Subscribe & save — $67/month", "brand");
                       try {
                         const line = { merchandiseId: VARIANTS.BUNDLE, quantity: 1, sellingPlanId: SELLING_PLANS.BUNDLE_MONTHLY };
                         const shopifyCart = await createCart([line]);
@@ -759,7 +765,7 @@ export default function BrandPage() {
                     ✓ Added to Cart
                   </div>
                   <button
-                    onClick={() => checkoutUrl && window.location.assign(checkoutUrl)}
+                    onClick={() => { trackInitiateCheckout(purchaseType === "subscribe" ? 67 : 79); checkoutUrl && window.location.assign(checkoutUrl); }}
                     className="cta-lime"
                     style={{ width: "100%", padding: "18px", fontSize: 14 }}
                   >

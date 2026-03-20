@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { MetaPixel } from "@/components/meta-pixel";
 
 export const metadata: Metadata = {
   title: "DARK — Skincare for Melanin-Rich Skin",
@@ -20,6 +21,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <MetaPixel />
         {children}
       </body>
     </html>

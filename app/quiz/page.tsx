@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { VARIANTS, SELLING_PLANS, createCart } from "@/lib/shopify";
+import { trackAddToCart, trackInitiateCheckout, trackEmailSignup, trackQuizStart, trackQuizComplete, trackQuizAnswer, trackViewContent } from "@/lib/meta-pixel";
 
 // ─── Data ───
 const questions = [
@@ -404,7 +405,11 @@ export default function DarkQuiz() {
       setAnalyzePhase(0);
       const t1 = setTimeout(() => setAnalyzePhase(1), 800);
       const t2 = setTimeout(() => setAnalyzePhase(2), 1800);
-      const t3 = setTimeout(() => setStep(totalQuestions + 3), 3200);
+      const t3 = setTimeout(() => {
+        trackQuizComplete(result?.segment);
+        trackViewContent("Quiz Results", "quiz");
+        setStep(totalQuestions + 3);
+      }, 3200);
       return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
     }
   }, [step, totalQuestions]);
@@ -413,12 +418,17 @@ export default function DarkQuiz() {
 
   const handleNext = () => {
     if (isQuestion && selected) {
+      trackQuizAnswer(currentQ.id, selected);
       setAnswers((prev) => ({ ...prev, [currentQ.id]: selected }));
       setSelected(null);
+    }
+    if (step === 0) {
+      trackQuizStart();
     }
     if (step === totalQuestions + 1) {
       // Email step → fire-and-forget Klaviyo subscribe, then go to analyzing
       if (email.includes("@")) {
+        trackEmailSignup("quiz");
         fetch("/api/subscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1420,6 +1430,10 @@ export default function DarkQuiz() {
                   <button
                     onClick={async () => {
                       setCartLoading(true);
+                      trackAddToCart(
+                        isSubscription ? "3-Serum System Bundle (Subscription)" : "3-Serum System Bundle",
+                        isSubscription ? 79 : 99
+                      );
                       try {
                         const line = isSubscription
                           ? { merchandiseId: VARIANTS.BUNDLE, quantity: 1, sellingPlanId: SELLING_PLANS.BUNDLE_MONTHLY }
@@ -1475,7 +1489,7 @@ export default function DarkQuiz() {
                       ✓ Added to Cart
                     </div>
                     <button
-                      onClick={() => checkoutUrl && window.location.assign(checkoutUrl)}
+                      onClick={() => { trackInitiateCheckout(isSubscription ? 79 : 99); checkoutUrl && window.location.assign(checkoutUrl); }}
                       style={{
                         display: "block",
                         width: "100%",
