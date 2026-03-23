@@ -5,6 +5,7 @@ const API_URL = `https://${SHOPIFY_STORE_DOMAIN}/api/2026-01/graphql.json`;
 // Product variant IDs (fetched from Shopify Storefront API)
 export const VARIANTS = {
   BUNDLE: "gid://shopify/ProductVariant/59174582517841",         // 3-Serum System Bundle — $99
+  BUNDLE_2: "gid://shopify/ProductVariant/59226058719313",       // Vitamin C + Dark Spot Bundle — $31
   VITAMIN_C: "gid://shopify/ProductVariant/59039475138641",      // Vitamin C Serum — $20
   DARK_SPOT_NORMAL: "gid://shopify/ProductVariant/59039474942033", // Dark Spot Serum (Normal) — $20
   DARK_SPOT_SENSITIVE: "gid://shopify/ProductVariant/59089641472081", // Dark Spot Serum (Sensitive) — $27.90
@@ -13,7 +14,8 @@ export const VARIANTS = {
 
 // Selling plan IDs (fetched from Shopify Storefront API)
 export const SELLING_PLANS = {
-  BUNDLE_MONTHLY: "gid://shopify/SellingPlan/1889796177", // Monthly subscription — 20% off ($79/mo)
+  BUNDLE_MONTHLY: "gid://shopify/SellingPlan/1889796177",        // 3-Serum monthly subscription
+  BUNDLE_2_MONTHLY: "gid://shopify/SellingPlan/1910603857",      // 2-Serum monthly subscription
 } as const;
 
 export interface ShopifyCartLine {

@@ -1,21 +1,88 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { VARIANTS, SELLING_PLANS, createCart } from "@/lib/shopify";
-import { trackAddToCart, trackInitiateCheckout, trackEmailSignup, trackQuizStart, trackQuizComplete, trackQuizAnswer, trackViewContent } from "@/lib/meta-pixel";
+import {
+  trackAddToCart,
+  trackInitiateCheckout,
+  trackCustom,
+  trackLead,
+  trackViewContent,
+} from "@/lib/meta-pixel";
 
-// ─── Data ───
-const questions = [
+// ─── Path A — Risk Assessment Questions ───
+const pathAQuestions = [
+  {
+    id: "skin_tone",
+    question: "How would you describe your natural skin tone?",
+    subtitle: "Think about your undertone in natural light.",
+    why: "Skin tone affects baseline risk.",
+    education:
+      "Deeper skin tones have more reactive melanocytes — higher baseline risk for PIH when triggered.",
+    options: [
+      { label: "Light brown / caramel", value: "light", score: 1 },
+      { label: "Medium brown", value: "medium", score: 2 },
+      { label: "Deep brown", value: "deep", score: 3 },
+      { label: "Very deep / ebony", value: "ebony", score: 4 },
+    ],
+  },
+  {
+    id: "acne_history",
+    question: "How often do you experience breakouts?",
+    subtitle: "Consider your skin over the past year.",
+    why: "Acne is a leading PIH trigger.",
+    education:
+      "Acne is the leading trigger of PIH in darker skin. Frequency directly correlates with risk level.",
+    options: [
+      { label: "Rarely or never", value: "rarely", score: 0 },
+      { label: "Occasionally — a few times a year", value: "occasionally", score: 1 },
+      { label: "Regularly — monthly or more", value: "regularly", score: 2 },
+      { label: "Frequently — almost always have active breakouts", value: "frequently", score: 4 },
+    ],
+  },
+  {
+    id: "product_reactions",
+    question: "Have skincare products ever irritated or inflamed your skin?",
+    subtitle: "Think about redness, burning, or peeling from products.",
+    why: "Inflammation triggers melanin.",
+    education:
+      "Inflammation from product irritation triggers melanin production — a primary pathway to PIH.",
+    options: [
+      { label: "Never", value: "never", score: 0 },
+      { label: "Once or twice", value: "once", score: 1 },
+      { label: "A few times", value: "few", score: 2 },
+      { label: "Frequently — my skin reacts easily", value: "frequently", score: 4 },
+    ],
+  },
+  {
+    id: "sun_protection",
+    question: "How consistently do you wear SPF on your face?",
+    subtitle: "Be honest — this one matters more than you think.",
+    why: "UV accelerates melanin production.",
+    education:
+      "UV exposure accelerates melanin production and worsens existing and emerging hyperpigmentation.",
+    options: [
+      { label: "Daily, without fail", value: "daily", score: 0 },
+      { label: "Most days", value: "most", score: 1 },
+      { label: "Sometimes", value: "sometimes", score: 2 },
+      { label: "Rarely or never", value: "rarely", score: 4 },
+    ],
+  },
+];
+
+// ─── Path B — Severity Assessment Questions ───
+const pathBQuestions = [
   {
     id: "color",
     question: "What color are your dark spots?",
     subtitle: "Look at your spots in natural daylight for the most accurate read.",
     why: "Color reveals depth.",
-    education: "Brown tones mean pigment sits near the surface (epidermal layer) — these respond fastest to topicals. Grayish or blue undertones signal deeper dermal pigmentation, which requires a different strategy entirely. This single observation changes your entire treatment path.",
+    education:
+      "Color reveals pigment depth — brown means epidermal, grey or blue means dermal. Dermal pigment requires a stronger, longer protocol.",
     options: [
-      { label: "Light tan / golden", subtext: "Close to my natural tone", value: "light", score: 1, swatch: "#C8A882" },
-      { label: "Medium–dark brown", subtext: "Clearly visible contrast", value: "medium", score: 2, swatch: "#8B6914" },
-      { label: "Very dark / near-black", subtext: "Strong contrast", value: "dark", score: 3, swatch: "#3D2B1F" },
-      { label: "Grayish or blue-toned", subtext: "Ashy, almost bruise-like", value: "gray", score: 4, swatch: "#6B7B8D" },
+      { label: "Light tan / golden", value: "light", score: 1 },
+      { label: "Medium–dark brown", value: "medium", score: 2 },
+      { label: "Very dark / near-black", value: "dark", score: 3 },
+      { label: "Grayish or blue-toned", value: "gray", score: 4 },
     ],
   },
   {
@@ -23,218 +90,267 @@ const questions = [
     question: "How much of your face is affected?",
     subtitle: "Think about all areas — cheeks, forehead, upper lip, jawline.",
     why: "Coverage drives clinical severity.",
-    education: "Dermatologists use the mMASI scale to score hyperpigmentation severity. Coverage area is weighted heavily — scattered spots across 30% of the face can score higher than a single dark patch. This determines whether you need spot treatment or a full-face protocol.",
+    education:
+      "Based on the mMASI dermatological scale used by dermatologists to assess hyperpigmentation severity.",
     options: [
-      { label: "A few spots", subtext: "Under 10% of my face", value: "few", score: 1, pct: "< 10%" },
-      { label: "Scattered patches", subtext: "Across 1–2 zones", value: "scattered", score: 2, pct: "10–30%" },
-      { label: "Large zones", subtext: "Cheeks + forehead or chin", value: "zones", score: 3, pct: "30–60%" },
-      { label: "Nearly everywhere", subtext: "Widespread discoloration", value: "widespread", score: 4, pct: "60%+" },
+      { label: "A few spots — less than 10%", value: "few", score: 1 },
+      { label: "Scattered patches — 10 to 30%", value: "scattered", score: 2 },
+      { label: "Large zones — 30 to 60%", value: "zones", score: 3 },
+      { label: "Nearly everywhere — 60% or more", value: "widespread", score: 4 },
     ],
   },
   {
     id: "trigger",
     question: "What started your hyperpigmentation?",
-    subtitle: "If you're unsure, pick the closest match.",
+    subtitle: "If you\’re unsure, pick the closest match.",
     why: "Your trigger shapes your treatment.",
-    education: "Sun-induced spots involve localized melanin overproduction — relatively straightforward. Post-acne marks (PIH) stem from inflammation that kicked melanocytes into overdrive. Hormonal melasma is the most complex: it involves estrogen receptors in skin cells and often requires systemic management alongside topicals.",
+    education:
+      "Different triggers require different treatment strategies. Hormonal PIH is the most persistent and requires the full three-step system.",
     options: [
-      { label: "Sun exposure", subtext: "Sun spots, seasonal darkening", value: "sun", score: 1, icon: "☀" },
-      { label: "Post-acne marks", subtext: "Dark spots after breakouts", value: "acne", score: 2, icon: "●" },
-      { label: "Not sure", subtext: "Appeared gradually over time", value: "unknown", score: 2, icon: "?" },
-      { label: "Hormonal changes", subtext: "Pregnancy, BC, menopause", value: "hormonal", score: 3, icon: "⬡" },
+      { label: "Sun exposure", value: "sun", score: 1 },
+      { label: "Post-acne marks", value: "acne", score: 2 },
+      { label: "Not sure", value: "unknown", score: 2 },
+      { label: "Hormonal changes", value: "hormonal", score: 3 },
     ],
   },
   {
     id: "duration",
-    question: "How long have you had this?",
+    question: "How long have you had these dark spots?",
     subtitle: "Think about when you first noticed the discoloration.",
     why: "Time reveals treatment difficulty.",
-    education: "Pigment migrates deeper into the dermis over time. A spot that's been present for 6 months is structurally different from one that's 3+ years old — even if they look similar on the surface. Longer-standing pigmentation typically requires more aggressive actives and realistic timelines measured in months, not weeks.",
+    education:
+      "Pigment migrates deeper over time. Spots present for more than a year are typically dermal and need the full system to treat effectively.",
     options: [
-      { label: "Under 3 months", subtext: "Fairly recent", value: "recent", score: 1 },
-      { label: "3–12 months", subtext: "Developing for a while", value: "year", score: 2 },
-      { label: "1–3 years", subtext: "Persistent problem", value: "persistent", score: 3 },
-      { label: "3+ years", subtext: "Long-standing, treatment-resistant", value: "chronic", score: 4 },
+      { label: "Under 3 months", value: "recent", score: 1 },
+      { label: "3 to 12 months", value: "year", score: 2 },
+      { label: "1 to 3 years", value: "persistent", score: 3 },
+      { label: "3 or more years", value: "chronic", score: 4 },
     ],
   },
   {
     id: "history",
     question: "Have brightening products worked for you before?",
-    subtitle: "Think about vitamin C serums, dark spot correctors, exfoliants — anything marketed for hyperpigmentation.",
+    subtitle:
+      "Think about vitamin C serums, dark spot correctors, exfoliants — anything marketed for hyperpigmentation.",
     why: "Past failures are diagnostic.",
-    education: "This is the question dermatologists care about most. If over-the-counter brightening products haven't moved the needle, it almost always means your pigment sits deeper than topical actives can easily reach. That's not a failure on your part — it's information that completely changes the recommended approach.",
+    education:
+      "Past treatment failure is the strongest indicator of dermal pigmentation. Products that failed were likely not formulated to reach the right depth.",
     options: [
-      { label: "Haven't tried any", subtext: "Starting fresh", value: "no", score: 0 },
-      { label: "Yes — saw some fading", subtext: "Partial improvement", value: "some", score: 1 },
-      { label: "Yes — barely any change", subtext: "Results faded quickly", value: "minimal", score: 3 },
-      { label: "Yes — nothing worked", subtext: "Zero visible improvement", value: "nothing", score: 4 },
+      { label: "Haven\’t tried any", value: "no", score: 0 },
+      { label: "Yes — saw some fading", value: "some", score: 1 },
+      { label: "Yes — barely any change", value: "minimal", score: 3 },
+      { label: "Yes — nothing worked", value: "nothing", score: 4 },
     ],
   },
 ];
 
-function getResults(answers) {
+// ─── Products ───
+const products = {
+  vitC: { name: "DARK Vitamin C Serum", tag: "VITAMIN C SERUM" },
+  darkSpot: { name: "DARK Dark Spot Serum", tag: "DARK SPOT SERUM" },
+  retinol: { name: "DARK Retinol & Peptide Serum", tag: "RETINOL & PEPTIDE" },
+};
+
+// ─── Path A Results ───
+function getPathAResults(answers: Record<string, string>) {
   let totalScore = 0;
   for (const [qId, val] of Object.entries(answers)) {
-    const q = questions.find((q) => q.id === qId);
+    const q = pathAQuestions.find((q) => q.id === qId);
     const opt = q?.options.find((o) => o.value === val);
     if (opt) totalScore += opt.score;
   }
 
-  // Product detail objects for consistent referencing
-  const products = {
-    vitC: {
-      name: "DARK Vitamin C Serum",
-      tag: "DARK VITAMIN C",
-    },
-    darkSpot: {
-      name: "DARK Dark Spot Serum",
-      tag: "DARK SPOT SERUM",
-    },
-    retinol: {
-      name: "DARK Retinol & Peptide Serum",
-      tag: "RETINOL & PEPTIDE",
-    },
-  };
-
-  if (totalScore <= 6) {
+  if (totalScore <= 5) {
     return {
-      segment: "Mild",
-      label: "Epidermal",
-      headline: "Your pigment is surface-level.",
-      subhead: "That's the best possible starting point.",
-      detail: "Your clinical profile indicates primarily epidermal hyperpigmentation — melanin sitting in the outermost layers of skin. This type responds exceptionally well to targeted topical actives. With the right combination of melanin-intercepting ingredients and antioxidant defense, you should see measurable fading.",
-      timeline: "6–10 weeks",
-      timelineNote: "with consistent daily use",
-      scoreRange: "0–6",
+      segment: "Low Risk",
+      badge: "CAUTION",
+      headline: "Your skin profile suggests a lower risk of developing hyperpigmentation right now.",
+      detail:
+        "That doesn\’t mean you\’re immune — it means you have a window. The right prevention routine now is significantly easier than treating it later.",
+      products: [products.vitC],
+      routineRationale:
+        "Interrupt melanin production before inflammation can trigger it. One step, used daily, is enough at this stage.",
+      timeline: "6 weeks",
+      priceOneTime: 29,
+      priceSub: 25,
+      scoreRange: "0–5",
       score: totalScore,
-      products: [products.vitC, products.darkSpot],
-      routine: [
-        {
-          time: "AM",
-          step: 1,
-          name: products.vitC.name,
-          product: true,
-          role: "Your serum delivers three forms of Vitamin C — L-Ascorbic Acid for immediate brightening, plus Magnesium Ascorbyl Phosphate and 3-Glyceryl Ascorbate for sustained melanin suppression throughout the day. Ferulic Acid doubles the photoprotective power, while Rice and Calendula extracts calm inflammation that triggers new pigment.",
-        },
-        {
-          time: "AM",
-          step: 2,
-          name: "SPF 50+ Broad Spectrum",
-          product: false,
-          role: "Non-negotiable. Even 10 minutes of unprotected UV exposure can undo weeks of brightening progress on melanin-rich skin. Apply generously every morning, reapply every 2 hours outdoors.",
-        },
-        {
-          time: "PM",
-          step: 3,
-          name: products.darkSpot.name,
-          product: true,
-          role: "This is where the heavy lifting happens at night. Hexylresorcinol and Kojic Acid shut down tyrosinase — the enzyme that produces melanin. Niacinamide blocks pigment from transferring to surrounding cells. Gluconolactone gently dissolves the surface layer of pigmented skin. Mushroom extracts (Shiitake and Turkey Tail) provide additional brightening through pathways most serums don't even target.",
-        },
-      ],
-      ctaText: "Shop Your 2-Product System",
-      ctaPrice: 49,
-      ctaOriginal: 65,
+      maxScore: 16,
     };
-  } else if (totalScore <= 12) {
+  } else if (totalScore <= 10) {
     return {
-      segment: "Moderate",
-      label: "Mixed-Depth",
-      headline: "Your pigment runs deeper than the surface.",
-      subhead: "This explains why basic products haven't fully worked.",
-      detail: "Your profile indicates mixed epidermal and early dermal pigmentation. Standard brightening serums only address the top layer — they can't reach where some of your melanin lives. You need actives working at multiple depths simultaneously: melanin interception on the surface, inflammatory cycle disruption in the middle layers, and accelerated cellular turnover from below.",
-      timeline: "3–5 months",
-      timelineNote: "for meaningful, lasting improvement",
-      scoreRange: "7–12",
+      segment: "Moderate Risk",
+      badge: "ATTENTION",
+      headline: "Your skin has several risk factors that put you in the moderate risk category.",
+      detail:
+        "This means hyperpigmentation hasn\’t fully developed yet — but the conditions for it are present. Starting a two-step protocol now significantly reduces the likelihood of it progressing.",
+      products: [products.vitC, products.darkSpot],
+      routineRationale:
+        "Two steps work together — one prevents new melanin formation, one targets any early spots before they deepen.",
+      timeline: "8–10 weeks",
+      priceOneTime: 50,
+      priceSub: 40,
+      scoreRange: "6–10",
       score: totalScore,
-      products: [products.vitC, products.darkSpot, products.retinol],
-      routine: [
-        {
-          time: "AM",
-          step: 1,
-          name: products.vitC.name,
-          product: true,
-          role: "Triple-form Vitamin C (L-Ascorbic Acid, MAP, and 3-Glyceryl Ascorbate) intercepts melanin production at the enzymatic level. Ferulic Acid amplifies UV defense — critical because your pigmentation has an inflammatory component that sunlight actively worsens. Chamomile and Calendula prevent the irritation that triggers rebound darkening.",
-        },
-        {
-          time: "AM",
-          step: 2,
-          name: "SPF 50+ Broad Spectrum",
-          product: false,
-          role: "At your severity level, unprotected sun exposure doesn't just slow progress — it actively reverses it. Daily SPF is the single most important step. Look for formulas with iron oxides, which block visible light that standard sunscreens miss.",
-        },
-        {
-          time: "PM",
-          step: 3,
-          name: products.darkSpot.name,
-          product: true,
-          role: "This serum attacks your pigmentation through five separate pathways. Azelaic Acid and Hexylresorcinol inhibit tyrosinase at the dermal level — where your deeper pigment lives. Kojic Acid and Niacinamide handle the epidermal layer. Gluconolactone accelerates surface cell turnover without the harshness of traditional acids. Resveratrol and Green Tea provide antioxidant reinforcement that prevents new pigment from forming while you treat existing spots.",
-        },
-        {
-          time: "PM",
-          step: 4,
-          name: products.retinol.name,
-          product: true,
-          role: "Retinol forces deep cellular renewal — pushing pigmented cells to the surface faster so your other actives can clear them. Hexapeptide-11 supports skin repair and collagen production during this accelerated turnover. Bisabolol keeps inflammation in check so the retinol doesn't trigger the exact hyperpigmentation you're trying to fix. Start 2–3 nights per week and build to nightly as your skin acclimates.",
-        },
-      ],
-      ctaText: "Shop Your 3-Product System",
-      ctaPrice: 79,
-      ctaOriginal: 99,
+      maxScore: 16,
     };
   } else {
     return {
-      segment: "Severe",
-      label: "Dermal",
-      headline: "Your pigment sits deep in the dermis.",
-      subhead: "This requires a clinical-grade approach.",
-      detail: "Your profile indicates deep, treatment-resistant dermal pigmentation — often involving hormonal or systemic triggers. We'll be honest: this level of pigmentation takes real commitment. But our full 3-product protocol is specifically formulated to manage every layer that topicals can reach. With consistent daily use, you'll see meaningful progress — it just takes patience and discipline.",
-      timeline: "6–12 months",
-      timelineNote: "consistency and patience are non-negotiable",
-      scoreRange: "13–20",
-      score: totalScore,
+      segment: "High Risk",
+      badge: "ACT NOW",
+      headline: "Your skin profile indicates a high risk of developing significant hyperpigmentation.",
+      detail:
+        "Based on your skin tone, acne history, and reaction patterns — your melanocytes are highly reactive. The full three-step system is the right move before this becomes harder to treat.",
       products: [products.vitC, products.darkSpot, products.retinol],
-      routine: [
-        {
-          time: "AM",
-          step: 1,
-          name: products.vitC.name,
-          product: true,
-          role: "Your morning defense layer. Triple-form Vitamin C provides continuous antioxidant protection that prevents UV and environmental stress from depositing new melanin while you work on clearing existing pigment. Ferulic Acid is clinically shown to double photoprotection — essential at your severity level where any new pigment production is a setback.",
-        },
-        {
-          time: "AM",
-          step: 2,
-          name: "SPF 50+ Broad Spectrum",
-          product: false,
-          role: "Daily. Every day. Rain or shine. Even indoors near windows. At your pigment depth, this is the single most important step in your entire routine. Choose a formula with iron oxides to block visible light — a trigger that standard sunscreens completely miss.",
-        },
-        {
-          time: "PM",
-          step: 3,
-          name: products.darkSpot.name,
-          product: true,
-          role: "Your most important treatment product. Azelaic Acid is one of the few ingredients with clinical evidence for reaching dermal pigment — and it's combined here with Hexylresorcinol, which outperforms hydroquinone in studies without the side effects. Kojic Acid and Niacinamide address the epidermal layer simultaneously. The Shiitake and Turkey Tail mushroom extracts provide tyrosinase inhibition through a completely different mechanism than the acids, meaning more pathways blocked. Atelocollagen and Chondroitin Sulfate support dermal repair at the structural level.",
-        },
-        {
-          time: "PM",
-          step: 4,
-          name: products.retinol.name,
-          product: true,
-          role: "Retinol drives aggressive cellular turnover — essential for pushing deep pigment toward the surface where your Dark Spot Serum can clear it. Hexapeptide-11 supports the structural repair your skin needs during this accelerated renewal cycle. Bisabolol is critical here: it prevents the inflammatory cascade that retinol can trigger on sensitive or over-pigmented skin. Use 2–3 nights per week, alternating with your Dark Spot Serum on other nights.",
-        },
-      ],
-      ctaText: "Shop Full System",
-      ctaPrice: 99,
-      ctaOriginal: 129,
+      routineRationale:
+        "All three steps are needed — prevention, targeted treatment, and cell renewal support. Starting now gives you the best chance of staying ahead of it.",
+      timeline: "3–4 months",
+      priceOneTime: 79,
+      priceSub: 69,
+      scoreRange: "11–16",
+      score: totalScore,
+      maxScore: 16,
     };
   }
 }
 
+// ─── Path B Results ───
+function getPathBResults(answers: Record<string, string>) {
+  let totalScore = 0;
+  for (const [qId, val] of Object.entries(answers)) {
+    const q = pathBQuestions.find((q) => q.id === qId);
+    const opt = q?.options.find((o) => o.value === val);
+    if (opt) totalScore += opt.score;
+  }
+
+  if (totalScore <= 6) {
+    return {
+      segment: "Mild",
+      badge: "Epidermal",
+      headline: "Your hyperpigmentation is in the early stages — primarily in the upper layers of your skin.",
+      detail:
+        "This is the most treatable stage. The right two-step protocol can produce visible results in 6 to 10 weeks.",
+      products: [products.vitC, products.darkSpot],
+      routineRationale:
+        "Vitamin C intercepts melanin production during the day while Dark Spot Serum targets existing pigment at night. Two steps, working in sync.",
+      timeline: "6–10 weeks",
+      priceOneTime: 50,
+      priceSub: 40,
+      scoreRange: "0–6",
+      score: totalScore,
+      maxScore: 20,
+    };
+  } else if (totalScore <= 12) {
+    return {
+      segment: "Moderate",
+      badge: "Mixed Depth",
+      headline: "Your hyperpigmentation has both epidermal and early dermal involvement.",
+      detail:
+        "Surface treatments alone won\’t be enough at this stage. The full three-step system addresses pigment at both depths — and supports the skin\’s ability to renew itself so results hold.",
+      products: [products.vitC, products.darkSpot, products.retinol],
+      routineRationale:
+        "Three products target three depths — surface melanin interception, mid-layer pigment disruption, and deep cellular renewal.",
+      timeline: "3–5 months",
+      priceOneTime: 79,
+      priceSub: 69,
+      scoreRange: "7–12",
+      score: totalScore,
+      maxScore: 20,
+    };
+  } else {
+    return {
+      segment: "Severe",
+      badge: "Dermal",
+      headline: "Your hyperpigmentation has migrated into the deeper layers of your skin.",
+      detail:
+        "This is the most persistent form of PIH and the most commonly undertreated — because most products on the market are formulated to treat surface pigmentation only. The full system was built specifically for this depth.",
+      products: [products.vitC, products.darkSpot, products.retinol],
+      routineRationale:
+        "The full system attacks pigment at every reachable layer — prevention, treatment, and accelerated cell renewal working together daily.",
+      timeline: "6–12 months",
+      priceOneTime: 79,
+      priceSub: 69,
+      scoreRange: "13–20",
+      score: totalScore,
+      maxScore: 20,
+    };
+  }
+}
+
+// ─── Tracking Helpers ───
+function fireQuizStart(pathChoice: "A" | "B") {
+  trackCustom("QuizStart", { content_name: pathChoice, content_category: `path_${pathChoice.toLowerCase()}` });
+}
+
+function fireQuizAnswer(
+  path: "A" | "B",
+  questionId: string,
+  answerValue: string,
+  runningScore: number
+) {
+  trackCustom("QuizAnswer", {
+    content_name: questionId,
+    content_category: answerValue,
+    value: runningScore,
+    path: `path_${path.toLowerCase()}`,
+  });
+}
+
+function fireQuizEmailSubmit(
+  path: "A" | "B",
+  scoreRange: string,
+  resultSegment: string
+) {
+  trackLead("quiz");
+  trackCustom("QuizEmailSubmit", {
+    content_name: resultSegment,
+    content_category: `path_${path.toLowerCase()}`,
+    path: `path_${path.toLowerCase()}`,
+    score_range: scoreRange,
+    result_segment: resultSegment,
+  });
+}
+
+function fireQuizEmailSkip(path: "A" | "B", scoreRange: string) {
+  trackCustom("QuizEmailSkip", {
+    content_category: `path_${path.toLowerCase()}`,
+    path: `path_${path.toLowerCase()}`,
+    score_range: scoreRange,
+  });
+}
+
+function fireQuizComplete(
+  path: "A" | "B",
+  finalScore: number,
+  resultSegment: string,
+  productRecommended: string
+) {
+  trackCustom("QuizComplete", {
+    content_name: resultSegment,
+    content_category: `path_${path.toLowerCase()}`,
+    value: finalScore,
+    path: `path_${path.toLowerCase()}`,
+    result_segment: resultSegment,
+    product_recommended: productRecommended,
+  });
+  trackViewContent("Quiz Results", `path_${path.toLowerCase()}`);
+}
+
 // ─── Reusable Components ───
 
-function EducationDrawer({ why, education, isOpen, onToggle }) {
+function EducationDrawer({
+  why,
+  education,
+  isOpen,
+  onToggle,
+}: {
+  why: string;
+  education: string;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <div style={{ marginBottom: 32 }}>
+    <div style={{ marginBottom: 24 }}>
       <button
         onClick={onToggle}
         style={{
@@ -254,7 +370,7 @@ function EducationDrawer({ why, education, isOpen, onToggle }) {
             width: 28,
             height: 28,
             borderRadius: "50%",
-            background: isOpen ? "#1a1a1a" : "rgba(180,160,130,0.15)",
+            background: isOpen ? "#1A1410" : "rgba(180,160,130,0.15)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -286,7 +402,14 @@ function EducationDrawer({ why, education, isOpen, onToggle }) {
           }}
         >
           {why}
-          <span style={{ fontWeight: 400, textTransform: "none", marginLeft: 6, color: "#aaa" }}>
+          <span
+            style={{
+              fontWeight: 400,
+              textTransform: "none",
+              marginLeft: 6,
+              color: "#aaa",
+            }}
+          >
             Tap to learn more
           </span>
         </span>
@@ -295,7 +418,8 @@ function EducationDrawer({ why, education, isOpen, onToggle }) {
         style={{
           maxHeight: isOpen ? 300 : 0,
           overflow: "hidden",
-          transition: "max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease",
+          transition:
+            "max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease",
           opacity: isOpen ? 1 : 0,
         }}
       >
@@ -309,8 +433,8 @@ function EducationDrawer({ why, education, isOpen, onToggle }) {
         >
           <p
             style={{
-              fontFamily: "'Source Serif 4', Georgia, serif",
-              fontSize: 15,
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: 14,
               lineHeight: 1.75,
               color: "#555",
               margin: 0,
@@ -324,9 +448,22 @@ function EducationDrawer({ why, education, isOpen, onToggle }) {
   );
 }
 
-function ProgressDots({ current, total }) {
+function ProgressDots({
+  current,
+  total,
+}: {
+  current: number;
+  total: number;
+}) {
   return (
-    <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 32 }}>
+    <div
+      style={{
+        display: "flex",
+        gap: 6,
+        justifyContent: "center",
+        marginBottom: 32,
+      }}
+    >
       {Array.from({ length: total }).map((_, i) => (
         <div
           key={i}
@@ -334,8 +471,8 @@ function ProgressDots({ current, total }) {
             width: i === current ? 24 : 8,
             height: 8,
             borderRadius: 100,
-            background: i < current ? "#1a1a1a" : i === current ? "#1a1a1a" : "#ddd",
-            opacity: i < current ? 0.3 : 1,
+            background: i <= current ? "#CAFF4B" : "rgba(26,20,16,0.12)",
+            opacity: i < current ? 0.5 : 1,
             transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
         />
@@ -344,20 +481,58 @@ function ProgressDots({ current, total }) {
   );
 }
 
-function ScoreMeter({ score, max = 20, label }) {
+function ScoreMeter({
+  score,
+  max,
+  label,
+}: {
+  score: number;
+  max: number;
+  label: string;
+}) {
   const pct = Math.min((score / max) * 100, 100);
-  const color = score <= 6 ? "#5a8a5e" : score <= 12 ? "#b8860b" : "#a04040";
+  const color =
+    pct <= 35 ? "#3B6D11" : pct <= 65 ? "#BA7517" : "#A32D2D";
   return (
     <div style={{ margin: "24px 0 8px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 600, color: "#999", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-          Clinical Score
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 8,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "#999",
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+          }}
+        >
+          Your Score
         </span>
-        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 700, color: color }}>
+        <span
+          style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: 13,
+            fontWeight: 700,
+            color: color,
+          }}
+        >
           {score} / {max} — {label}
         </span>
       </div>
-      <div style={{ height: 6, background: "#eee", borderRadius: 100, overflow: "hidden" }}>
+      <div
+        style={{
+          height: 6,
+          background: "rgba(26,20,16,0.08)",
+          borderRadius: 100,
+          overflow: "hidden",
+        }}
+      >
         <div
           style={{
             width: `${pct}%`,
@@ -375,12 +550,18 @@ function ScoreMeter({ score, max = 20, label }) {
 // ─── Main Component ───
 
 export default function DarkQuiz() {
+  // State
+  const [path, setPath] = useState<"A" | "B" | null>(null);
   const [step, setStep] = useState(0);
-  // 0=welcome, 1-5=questions, 6=email gate, 7=analyzing, 8=results
-  const [answers, setAnswers] = useState({});
+  // step 0 = welcome/landing
+  // step 1..N = questions (N depends on path)
+  // step N+1 = email gate
+  // step N+2 = analyzing
+  // step N+3 = results
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [eduOpen, setEduOpen] = useState(false);
   const [animKey, setAnimKey] = useState(0);
   const [analyzePhase, setAnalyzePhase] = useState(0);
@@ -388,10 +569,23 @@ export default function DarkQuiz() {
   const [addedToCart, setAddedToCart] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [cartLoading, setCartLoading] = useState(false);
+  const [recapOpen, setRecapOpen] = useState(false);
 
+  const questions = path === "A" ? pathAQuestions : pathBQuestions;
   const totalQuestions = questions.length;
   const isQuestion = step >= 1 && step <= totalQuestions;
   const currentQ = isQuestion ? questions[step - 1] : null;
+
+  // Get result based on path
+  const result =
+    path === "A" ? getPathAResults(answers) : getPathBResults(answers);
+
+  // Running score
+  const runningScore = Object.entries(answers).reduce((sum, [qId, val]) => {
+    const q = questions.find((q) => q.id === qId);
+    const opt = q?.options.find((o) => o.value === val);
+    return sum + (opt?.score || 0);
+  }, 0);
 
   // Animate on step change
   useEffect(() => {
@@ -399,41 +593,80 @@ export default function DarkQuiz() {
     setEduOpen(false);
   }, [step]);
 
-  // Analyzing animation phases
+  // Analyzing animation
   useEffect(() => {
     if (step === totalQuestions + 2) {
       setAnalyzePhase(0);
-      const t1 = setTimeout(() => setAnalyzePhase(1), 800);
-      const t2 = setTimeout(() => setAnalyzePhase(2), 1800);
+      const t1 = setTimeout(() => setAnalyzePhase(1), 1000);
+      const t2 = setTimeout(() => setAnalyzePhase(2), 2200);
       const t3 = setTimeout(() => {
-        trackQuizComplete(result?.segment);
-        trackViewContent("Quiz Results", "quiz");
+        const productNames = result.products.map((p) => p.tag).join(", ");
+        fireQuizComplete(path!, result.score, result.segment, productNames);
         setStep(totalQuestions + 3);
       }, 3200);
-      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
     }
   }, [step, totalQuestions]);
 
-  const handleSelect = (value) => setSelected(value);
+  const handlePathSelect = (p: "A" | "B") => {
+    setPath(p);
+    fireQuizStart(p);
+    setStep(1);
+  };
+
+  const handleSelect = (value: string) => setSelected(value);
 
   const handleNext = () => {
-    if (isQuestion && selected) {
-      trackQuizAnswer(currentQ.id, selected);
-      setAnswers((prev) => ({ ...prev, [currentQ.id]: selected }));
+    if (isQuestion && selected && currentQ) {
+      const newAnswers = { ...answers, [currentQ.id]: selected };
+      setAnswers(newAnswers);
+      // Calculate running score with new answer
+      const newScore = Object.entries(newAnswers).reduce((sum, [qId, val]) => {
+        const q = questions.find((q) => q.id === qId);
+        const opt = q?.options.find((o) => o.value === val);
+        return sum + (opt?.score || 0);
+      }, 0);
+      fireQuizAnswer(path!, currentQ.id, selected, newScore);
       setSelected(null);
     }
-    if (step === 0) {
-      trackQuizStart();
-    }
     if (step === totalQuestions + 1) {
-      // Email step → fire-and-forget Klaviyo subscribe, then go to analyzing
+      // Email step
       if (email.includes("@")) {
-        trackEmailSignup("quiz");
+        fireQuizEmailSubmit(path!, result.scoreRange, result.segment);
+        // Determine Klaviyo tags
+        const tags: string[] = [`path_${path!.toLowerCase()}`];
+        if (path === "A") {
+          if (result.segment === "Low Risk") tags.push("risk_low");
+          else if (result.segment === "Moderate Risk") tags.push("risk_moderate");
+          else tags.push("risk_high");
+        } else {
+          if (result.segment === "Mild") tags.push("severity_mild");
+          else if (result.segment === "Moderate") tags.push("severity_moderate");
+          else tags.push("severity_severe");
+        }
+        const productRec = result.products.map((p) => p.tag).join(", ");
         fetch("/api/subscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, firstName }),
-        }).catch(() => {/* silently ignore errors */});
+          body: JSON.stringify({
+            email,
+            firstName,
+            tags,
+            properties: {
+              quiz_path: path,
+              quiz_result: result.segment,
+              quiz_score: result.score,
+              score_range: result.scoreRange,
+              product_recommended: productRec,
+              quiz_completed: true,
+              quiz_skipped_email: false,
+            },
+          }),
+        }).catch(() => {});
       }
       setStep(totalQuestions + 2);
       return;
@@ -446,28 +679,70 @@ export default function DarkQuiz() {
       const prevQ = questions[step - 2];
       if (prevQ) setSelected(answers[prevQ.id] || null);
     }
+    if (step === 1) {
+      // Go back to path selection
+      setPath(null);
+      setAnswers({});
+      setSelected(null);
+      setStep(0);
+      return;
+    }
     setStep((s) => Math.max(0, s - 1));
   };
 
-  const result = getResults(answers);
+  const handleEmailSkip = () => {
+    fireQuizEmailSkip(path!, result.scoreRange);
+    // Fire Klaviyo with skip tag
+    if (email.includes("@")) {
+      fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          firstName,
+          properties: {
+            quiz_path: path,
+            quiz_skipped_email: true,
+          },
+        }),
+      }).catch(() => {});
+    }
+    setStep(totalQuestions + 2);
+  };
 
-  const runningScore = Object.entries(answers).reduce((sum, [qId, val]) => {
-    const q = questions.find((q) => q.id === qId);
-    const opt = q?.options.find((o) => o.value === val);
-    return sum + (opt?.score || 0);
-  }, 0);
+  // Cart line builder based on result
+  const getCartLines = () => {
+    const numProducts = result.products.length;
+    if (numProducts === 3) {
+      // Use bundle
+      return isSubscription
+        ? [{ merchandiseId: VARIANTS.BUNDLE, quantity: 1, sellingPlanId: SELLING_PLANS.BUNDLE_MONTHLY }]
+        : [{ merchandiseId: VARIANTS.BUNDLE, quantity: 1 }];
+    } else if (numProducts === 2) {
+      // Vitamin C + Dark Spot Bundle
+      return isSubscription
+        ? [{ merchandiseId: VARIANTS.BUNDLE_2, quantity: 1, sellingPlanId: SELLING_PLANS.BUNDLE_2_MONTHLY }]
+        : [{ merchandiseId: VARIANTS.BUNDLE_2, quantity: 1 }];
+    } else {
+      // Vitamin C only
+      return [{ merchandiseId: VARIANTS.VITAMIN_C, quantity: 1 }];
+    }
+  };
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "#FAF8F5",
+        background: "#FAF7F2",
         fontFamily: "'DM Sans', sans-serif",
         position: "relative",
         overflow: "hidden",
       }}
     >
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+      <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap"
+        rel="stylesheet"
+      />
 
       <style>{`
         @keyframes fadeUp {
@@ -478,24 +753,13 @@ export default function DarkQuiz() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(-8px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        @keyframes pulse-glow {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 1; }
+        @keyframes progressFill {
+          from { width: 0%; }
+          to { width: 100%; }
         }
         @keyframes scaleIn {
           from { opacity: 0; transform: scale(0.95); }
           to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes expandBar {
-          from { transform: scaleX(0); }
-          to { transform: scaleX(1); }
         }
         .fade-up { animation: fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
         .fade-in { animation: fadeIn 0.5s ease forwards; }
@@ -507,7 +771,7 @@ export default function DarkQuiz() {
 
         .opt-btn {
           width: 100%;
-          background: #fff;
+          background: #F2EBE0;
           border: 2px solid transparent;
           border-radius: 14px;
           padding: 18px 20px;
@@ -517,70 +781,57 @@ export default function DarkQuiz() {
           cursor: pointer;
           text-align: left;
           transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
           position: relative;
           overflow: hidden;
-        }
-        .opt-btn::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(135deg, rgba(180,160,130,0.04), transparent);
-          opacity: 0;
-          transition: opacity 0.3s ease;
+          min-height: 48px;
         }
         .opt-btn:hover {
-          border-color: rgba(180,160,130,0.3);
+          background: #E8DDD0;
           transform: translateY(-1px);
-          box-shadow: 0 4px 16px rgba(0,0,0,0.06);
         }
-        .opt-btn:hover::before { opacity: 1; }
         .opt-btn.active {
-          border-color: #1a1a1a;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+          border-color: #CAFF4B;
+          background: #E8DDD0;
         }
-        .opt-btn.active::before { opacity: 1; background: linear-gradient(135deg, rgba(180,160,130,0.06), transparent); }
 
         .radio-outer {
           width: 22px; height: 22px; border-radius: 50%;
-          border: 2px solid #d0ccc6;
+          border: 2px solid rgba(26,20,16,0.2);
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
           transition: all 0.25s ease;
         }
         .opt-btn.active .radio-outer {
-          border-color: #1a1a1a;
-          background: #1a1a1a;
+          border-color: #CAFF4B;
+          background: #CAFF4B;
         }
         .radio-inner {
           width: 7px; height: 7px; border-radius: 50%;
-          background: #fff;
+          background: #1A1410;
           transform: scale(0);
           transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
         }
         .opt-btn.active .radio-inner { transform: scale(1); }
 
         .primary-btn {
-          background: #1a1a1a;
-          color: #fff;
+          background: #CAFF4B;
+          color: #1A1410;
           border: none;
           padding: 18px 48px;
           border-radius: 100px;
           font-size: 14px;
           font-weight: 700;
           font-family: 'DM Sans', sans-serif;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
+          letter-spacing: 0.04em;
           cursor: pointer;
           transition: all 0.25s ease;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.12);
         }
         .primary-btn:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+          box-shadow: 0 8px 28px rgba(202,255,75,0.3);
         }
         .primary-btn:disabled {
-          background: #d0ccc6;
+          background: rgba(26,20,16,0.08);
           color: #aaa;
           cursor: not-allowed;
           box-shadow: none;
@@ -599,38 +850,41 @@ export default function DarkQuiz() {
 
         .result-card {
           background: #fff;
-          border: 1px solid rgba(0,0,0,0.06);
+          border: 1px solid rgba(26,20,16,0.06);
           border-radius: 16px;
           padding: 24px;
           margin-bottom: 12px;
           transition: all 0.2s ease;
         }
-        .result-card:hover {
-          box-shadow: 0 8px 24px rgba(0,0,0,0.04);
-        }
 
         input::placeholder { color: #bbb; }
-        input:focus { outline: none; border-color: #1a1a1a !important; }
+        input:focus { outline: none; border-color: #CAFF4B !important; }
 
-        /* Texture overlay */
-        .texture-bg::after {
-          content: '';
-          position: fixed;
-          inset: 0;
-          background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.015'/%3E%3C/svg%3E");
-          pointer-events: none;
-          z-index: 0;
+        .path-btn {
+          flex: 1;
+          background: #CAFF4B;
+          color: #1A1410;
+          border: none;
+          border-radius: 16px;
+          padding: 28px 24px;
+          cursor: pointer;
+          text-align: left;
+          transition: all 0.25s ease;
+          min-width: 240px;
+        }
+        .path-btn:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 12px 32px rgba(202,255,75,0.3);
         }
       `}</style>
 
       {/* ─── Nav ─── */}
       <nav
-        className="texture-bg"
         style={{
           padding: "16px 28px",
-          background: "rgba(250,248,245,0.9)",
+          background: "rgba(250,247,242,0.9)",
           backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(0,0,0,0.05)",
+          borderBottom: "1px solid rgba(26,20,16,0.05)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -644,18 +898,34 @@ export default function DarkQuiz() {
             style={{
               fontSize: 22,
               fontWeight: 800,
-              color: "#1a1a1a",
+              color: "#1A1410",
               letterSpacing: "0.12em",
               fontFamily: "'DM Sans', sans-serif",
             }}
           >
             DARK
           </span>
-          <span style={{ fontSize: 10, fontWeight: 600, color: "#b4a082", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              color: "#8a7a66",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
             skin assessment
           </span>
         </div>
-        <a href="/" className="ghost-btn" style={{ fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+        <a
+          href="/"
+          className="ghost-btn"
+          style={{
+            fontSize: 12,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+          }}
+        >
           Exit
         </a>
       </nav>
@@ -679,92 +949,156 @@ export default function DarkQuiz() {
           zIndex: 1,
         }}
       >
-        <div key={animKey} className="fade-up" style={{ maxWidth: 560, width: "100%", margin: "0 auto" }}>
-
-          {/* ═══ WELCOME ═══ */}
-          {step === 0 && (
-            <div style={{ textAlign: "center", padding: "40px 0 20px" }}>
-              {/* Decorative element */}
-              <div style={{ margin: "0 auto 32px", width: 80, height: 80, position: "relative" }}>
-                <div style={{
-                  width: 80, height: 80, borderRadius: "50%",
-                  background: "linear-gradient(135deg, #C8A882 0%, #8B6914 50%, #3D2B1F 100%)",
-                  opacity: 0.2,
-                }} />
-                <div style={{
-                  position: "absolute", top: "50%", left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  fontSize: 32,
-                }}>
-                  ◐
-                </div>
-              </div>
+        <div
+          key={animKey}
+          className="fade-up"
+          style={{ maxWidth: 600, width: "100%", margin: "0 auto" }}
+        >
+          {/* ═══ STEP 0 — WELCOME / 75% SCREEN ═══ */}
+          {step === 0 && !path && (
+            <div style={{ textAlign: "center", padding: "32px 0 20px" }}>
+              <p
+                style={{
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  color: "#8a7a66",
+                  marginBottom: 24,
+                }}
+              >
+                DARK Skin Assessment
+              </p>
 
               <h1
                 style={{
-                  fontFamily: "'Source Serif 4', Georgia, serif",
-                  fontSize: 42,
-                  fontWeight: 800,
-                  color: "#1a1a1a",
-                  margin: "0 0 16px",
-                  lineHeight: 1.1,
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontSize: 38,
+                  fontWeight: 700,
+                  color: "#1A1410",
+                  margin: "0 0 20px",
+                  lineHeight: 1.15,
                   letterSpacing: "-0.01em",
                 }}
               >
-                Your skin has a story.
-                <br />
-                <span style={{ color: "#b4a082" }}>Let's read it.</span>
+                Up to 75% of Black women will develop hyperpigmentation in their lifetime.
               </h1>
 
               <p
                 style={{
-                  fontFamily: "'Source Serif 4', Georgia, serif",
-                  fontSize: 17,
-                  color: "#888",
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: 16,
+                  color: "#777",
                   lineHeight: 1.7,
-                  maxWidth: 420,
+                  maxWidth: 480,
                   margin: "0 auto 40px",
                 }}
               >
-                Five clinical questions. Two minutes. We'll map your hyperpigmentation type, depth, and triggers — then build a treatment plan backed by dermatological research.
+                Most don&apos;t know they&apos;re already showing early signs. Some don&apos;t know they&apos;re at risk until it&apos;s harder to treat. This assessment was built to tell you exactly where you stand &mdash; in 60 seconds.
               </p>
 
+              {/* Two Path Buttons */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 16,
+                  justifyContent: "center",
+                  flexWrap: "wrap",
+                  marginBottom: 48,
+                }}
+              >
+                <button
+                  className="path-btn"
+                  onClick={() => handlePathSelect("A")}
+                >
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: 17,
+                      fontWeight: 700,
+                      marginBottom: 6,
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    I don&apos;t have dark spots yet
+                  </span>
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      opacity: 0.7,
+                    }}
+                  >
+                    Find out if you&apos;re at risk
+                  </span>
+                </button>
+
+                <button
+                  className="path-btn"
+                  onClick={() => handlePathSelect("B")}
+                >
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: 17,
+                      fontWeight: 700,
+                      marginBottom: 6,
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    I already have dark spots
+                  </span>
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      opacity: 0.7,
+                    }}
+                  >
+                    Find out how severe it is
+                  </span>
+                </button>
+              </div>
+
+              {/* Trust Badges */}
               <div
                 style={{
                   display: "flex",
                   justifyContent: "center",
-                  gap: 32,
-                  marginBottom: 48,
+                  gap: 28,
                   flexWrap: "wrap",
                 }}
               >
                 {[
-                  { icon: "◷", text: "2 minutes" },
-                  { icon: "⚕", text: "Clinically modeled" },
-                  { icon: "◉", text: "Personalized results" },
+                  "Clinically modeled questions",
+                  "Built for melanin-rich skin",
+                  "Results in 60 seconds",
+                  "Used by 500+ women",
                 ].map((item) => (
                   <div
-                    key={item.text}
-                    style={{ display: "flex", alignItems: "center", gap: 8, color: "#aaa", fontSize: 13, fontWeight: 500 }}
+                    key={item}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      color: "#aaa",
+                      fontSize: 12,
+                      fontWeight: 500,
+                    }}
                   >
-                    <span style={{ fontSize: 16, color: "#b4a082" }}>{item.icon}</span>
-                    {item.text}
+                    <span style={{ color: "#8a7a66", fontSize: 10 }}>&#10003;</span>
+                    {item}
                   </div>
                 ))}
               </div>
-
-              <button className="primary-btn" onClick={handleNext} style={{ padding: "20px 56px", fontSize: 15 }}>
-                Begin Assessment
-              </button>
-
-              <p style={{ fontSize: 12, color: "#ccc", marginTop: 24, lineHeight: 1.5 }}>
-                Not a medical diagnosis. For educational purposes.
-              </p>
             </div>
           )}
 
           {/* ═══ QUESTIONS ═══ */}
-          {isQuestion && (
+          {isQuestion && currentQ && (
             <div>
               <p
                 style={{
@@ -772,7 +1106,7 @@ export default function DarkQuiz() {
                   fontWeight: 700,
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
-                  color: "#b4a082",
+                  color: "#8a7a66",
                   marginBottom: 10,
                   textAlign: "center",
                 }}
@@ -782,10 +1116,10 @@ export default function DarkQuiz() {
 
               <h2
                 style={{
-                  fontFamily: "'Source Serif 4', Georgia, serif",
-                  fontSize: 30,
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontSize: 28,
                   fontWeight: 700,
-                  color: "#1a1a1a",
+                  color: "#1A1410",
                   margin: "0 0 6px",
                   lineHeight: 1.2,
                   textAlign: "center",
@@ -794,44 +1128,49 @@ export default function DarkQuiz() {
                 {currentQ.question}
               </h2>
 
-              <p style={{ fontSize: 14, color: "#aaa", textAlign: "center", margin: "0 0 28px", fontWeight: 400 }}>
+              <p
+                style={{
+                  fontSize: 14,
+                  color: "#aaa",
+                  textAlign: "center",
+                  margin: "0 0 28px",
+                  fontWeight: 400,
+                }}
+              >
                 {currentQ.subtitle}
               </p>
 
               {/* Options */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 8 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                  marginBottom: 8,
+                }}
+              >
                 {currentQ.options.map((opt, i) => (
                   <button
                     key={opt.value}
-                    className={`opt-btn fade-up stagger-${i + 1} ${selected === opt.value ? "active" : ""}`}
+                    className={`opt-btn fade-up stagger-${i + 1} ${
+                      selected === opt.value ? "active" : ""
+                    }`}
                     onClick={() => handleSelect(opt.value)}
                   >
                     <div className="radio-outer">
                       <div className="radio-inner" />
                     </div>
-                    {opt.swatch && (
+                    <div style={{ flex: 1 }}>
                       <div
                         style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: 8,
-                          background: opt.swatch,
-                          flexShrink: 0,
-                          border: "1px solid rgba(0,0,0,0.08)",
+                          fontSize: 15,
+                          fontWeight: 600,
+                          color: "#1A1410",
                         }}
-                      />
-                    )}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 1 }}>
+                      >
                         {opt.label}
                       </div>
-                      <div style={{ fontSize: 13, color: "#999", fontWeight: 400 }}>{opt.subtext}</div>
                     </div>
-                    {opt.pct && (
-                      <span style={{ fontSize: 12, fontWeight: 700, color: "#b4a082", flexShrink: 0 }}>
-                        {opt.pct}
-                      </span>
-                    )}
                   </button>
                 ))}
               </div>
@@ -844,35 +1183,74 @@ export default function DarkQuiz() {
                 onToggle={() => setEduOpen(!eduOpen)}
               />
 
-              {/* Running score (after first answer) */}
+              {/* Running score */}
               {Object.keys(answers).length > 0 && (
-                <div style={{ opacity: 0.6, marginBottom: 24 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#bbb", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                <div style={{ opacity: 0.5, marginBottom: 24 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#bbb",
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                      }}
+                    >
                       Running score
                     </span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#999" }}>
+                    <span
+                      style={{ fontSize: 12, fontWeight: 600, color: "#999" }}
+                    >
                       {runningScore} so far
                     </span>
                   </div>
-                  <div style={{ height: 3, background: "#eee", borderRadius: 100, marginTop: 6, overflow: "hidden" }}>
-                    <div style={{
-                      width: `${(runningScore / 20) * 100}%`,
-                      height: "100%",
-                      background: "linear-gradient(90deg, #b4a082, #8a7a66)",
+                  <div
+                    style={{
+                      height: 3,
+                      background: "rgba(26,20,16,0.06)",
                       borderRadius: 100,
-                      transition: "width 0.8s cubic-bezier(0.22,1,0.36,1)",
-                    }} />
+                      marginTop: 6,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${(runningScore / (path === "A" ? 16 : 20)) * 100}%`,
+                        height: "100%",
+                        background:
+                          "linear-gradient(90deg, #b4a082, #8a7a66)",
+                        borderRadius: 100,
+                        transition:
+                          "width 0.8s cubic-bezier(0.22,1,0.36,1)",
+                      }}
+                    />
                   </div>
                 </div>
               )}
 
               {/* Nav buttons */}
-              <div style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 16,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
                 <button className="ghost-btn" onClick={handleBack}>
                   Back
                 </button>
-                <button className="primary-btn" onClick={handleNext} disabled={!selected}>
+                <button
+                  className="primary-btn"
+                  onClick={handleNext}
+                  disabled={!selected}
+                >
                   {step === totalQuestions ? "See My Results" : "Continue"}
                 </button>
               </div>
@@ -887,12 +1265,13 @@ export default function DarkQuiz() {
                   width: 56,
                   height: 56,
                   borderRadius: "50%",
-                  background: "linear-gradient(135deg, rgba(180,160,130,0.15), rgba(180,160,130,0.05))",
+                  background: "rgba(202,255,75,0.2)",
                   margin: "0 auto 24px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: 24,
+                  color: "#3B6D11",
                 }}
               >
                 ✓
@@ -900,49 +1279,38 @@ export default function DarkQuiz() {
 
               <h2
                 style={{
-                  fontFamily: "'Source Serif 4', Georgia, serif",
+                  fontFamily: "'Playfair Display', Georgia, serif",
                   fontSize: 30,
                   fontWeight: 700,
-                  color: "#1a1a1a",
+                  color: "#1A1410",
                   margin: "0 0 12px",
                 }}
               >
-                Your assessment is ready.
+                Your results are ready.
               </h2>
-              <p style={{ fontSize: 15, color: "#999", lineHeight: 1.6, maxWidth: 380, margin: "0 auto 12px" }}>
-                We've analyzed your responses. Enter your email to unlock:
+              <p
+                style={{
+                  fontSize: 15,
+                  color: "#888",
+                  lineHeight: 1.6,
+                  maxWidth: 400,
+                  margin: "0 auto 32px",
+                }}
+              >
+                Enter your email and we&apos;ll send your personalized skin assessment &mdash; plus the exact routine built for where your skin is right now.
               </p>
-
-              {/* Value props */}
-              <div style={{ textAlign: "left", maxWidth: 340, margin: "0 auto 32px" }}>
-                {[
-                  "Your clinical severity score & what it means",
-                  "Exact ingredients and concentrations for your type",
-                  "A realistic timeline based on your pigment depth",
-                  "15% off your first order",
-                ].map((item, i) => (
-                  <div
-                    key={i}
-                    className={`fade-up stagger-${i + 1}`}
-                    style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 12 }}
-                  >
-                    <span style={{ color: "#b4a082", fontSize: 14, marginTop: 1, flexShrink: 0 }}>✦</span>
-                    <span style={{ fontSize: 14, color: "#666", lineHeight: 1.5 }}>{item}</span>
-                  </div>
-                ))}
-              </div>
 
               <div style={{ maxWidth: 380, margin: "0 auto" }}>
                 <input
                   type="text"
-                  placeholder="First name (optional)"
+                  placeholder="Your name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   style={{
                     width: "100%",
                     padding: "16px 20px",
                     borderRadius: 12,
-                    border: "2px solid #eee",
+                    border: "2px solid rgba(26,20,16,0.08)",
                     fontSize: 15,
                     fontFamily: "'DM Sans', sans-serif",
                     marginBottom: 12,
@@ -953,14 +1321,14 @@ export default function DarkQuiz() {
                 />
                 <input
                   type="email"
-                  placeholder="Email address"
+                  placeholder="Your email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   style={{
                     width: "100%",
                     padding: "16px 20px",
                     borderRadius: 12,
-                    border: "2px solid #eee",
+                    border: "2px solid rgba(26,20,16,0.08)",
                     fontSize: 15,
                     fontFamily: "'DM Sans', sans-serif",
                     marginBottom: 20,
@@ -974,20 +1342,18 @@ export default function DarkQuiz() {
                   className="primary-btn"
                   onClick={handleNext}
                   disabled={!email.includes("@")}
-                  style={{ width: "100%" }}
+                  style={{ width: "100%", fontSize: 15 }}
                 >
-                  Unlock My Results
+                  See my results →
                 </button>
               </div>
 
               <button
                 className="ghost-btn"
-                onClick={() => {
-                  setStep(totalQuestions + 2);
-                }}
+                onClick={handleEmailSkip}
                 style={{ marginTop: 16, fontSize: 12 }}
               >
-                Skip — show me the results
+                Skip for now
               </button>
             </div>
           )}
@@ -995,52 +1361,72 @@ export default function DarkQuiz() {
           {/* ═══ ANALYZING ═══ */}
           {step === totalQuestions + 2 && (
             <div style={{ textAlign: "center", padding: "60px 0" }}>
-              {/* Animated ring */}
-              <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 32px" }}>
+              {/* Warm progress bar */}
+              <div
+                style={{
+                  width: 200,
+                  height: 4,
+                  background: "rgba(26,20,16,0.08)",
+                  borderRadius: 100,
+                  margin: "0 auto 40px",
+                  overflow: "hidden",
+                }}
+              >
                 <div
                   style={{
-                    width: 72,
-                    height: 72,
-                    border: "3px solid #eee",
-                    borderTopColor: "#1a1a1a",
-                    borderRadius: "50%",
-                    animation: "spin 0.8s linear infinite",
+                    height: "100%",
+                    background: "linear-gradient(90deg, #CAFF4B, #3B6D11)",
+                    borderRadius: 100,
+                    animation: "progressFill 3.2s ease-out forwards",
                   }}
                 />
               </div>
 
-              {["Scoring 5 clinical dimensions...", "Mapping pigment depth indicators...", "Building your treatment protocol..."].map(
-                (text, i) => (
-                  <p
-                    key={i}
-                    style={{
-                      fontSize: 15,
-                      color: analyzePhase >= i ? "#555" : "#ddd",
-                      transition: "color 0.4s ease",
-                      margin: "0 0 12px",
-                      fontFamily: "'Source Serif 4', Georgia, serif",
-                      fontStyle: "italic",
-                    }}
-                  >
-                    {analyzePhase > i ? "✓ " : analyzePhase === i ? "→ " : ""}
-                    {text}
-                  </p>
-                )
-              )}
+              {[
+                "Mapping your melanin profile...",
+                "Cross-referencing with clinical research...",
+                "Building your personalized routine...",
+              ].map((text, i) => (
+                <p
+                  key={i}
+                  style={{
+                    fontSize: 15,
+                    color: analyzePhase >= i ? "#555" : "#ddd",
+                    transition: "color 0.4s ease",
+                    margin: "0 0 14px",
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    fontStyle: "italic",
+                  }}
+                >
+                  {analyzePhase > i
+                    ? "✓ "
+                    : analyzePhase === i
+                    ? "→ "
+                    : ""}
+                  {text}
+                </p>
+              ))}
             </div>
           )}
 
           {/* ═══ RESULTS ═══ */}
           {step === totalQuestions + 3 && (
             <div>
-              {/* Header */}
-              <div style={{ textAlign: "center", marginBottom: 36 }}>
+              {/* Score Meter */}
+              <ScoreMeter
+                score={result.score}
+                max={result.maxScore}
+                label={result.segment}
+              />
+
+              {/* Diagnosis Label */}
+              <div style={{ textAlign: "center", margin: "28px 0" }}>
                 <span
                   style={{
                     display: "inline-block",
-                    background: "#1a1a1a",
-                    color: "#fff",
-                    padding: "5px 14px",
+                    background: "#1A1410",
+                    color: "#CAFF4B",
+                    padding: "6px 16px",
                     borderRadius: 100,
                     fontSize: 11,
                     fontWeight: 700,
@@ -1049,49 +1435,33 @@ export default function DarkQuiz() {
                     marginBottom: 16,
                   }}
                 >
-                  {result.label} · {result.segment}
+                  {result.badge} · {result.segment}
                 </span>
 
                 <h2
                   style={{
-                    fontFamily: "'Source Serif 4', Georgia, serif",
-                    fontSize: 34,
-                    fontWeight: 800,
-                    color: "#1a1a1a",
-                    margin: "0 0 8px",
-                    lineHeight: 1.15,
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    fontSize: 30,
+                    fontWeight: 700,
+                    color: "#1A1410",
+                    margin: "0 0 12px",
+                    lineHeight: 1.2,
                   }}
                 >
                   {result.headline}
                 </h2>
-                <p style={{ fontSize: 16, color: "#999", margin: 0 }}>{result.subhead}</p>
               </div>
 
-              {/* Score */}
-              <ScoreMeter score={result.score} label={result.segment} />
-
-              {/* Detail card */}
+              {/* Diagnosis Explanation */}
               <div
                 className="result-card"
-                style={{ marginTop: 24, padding: 28, borderRadius: 20 }}
+                style={{ padding: 28, borderRadius: 20 }}
               >
-                <h3
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: "#b4a082",
-                    margin: "0 0 14px",
-                  }}
-                >
-                  What this means
-                </h3>
                 <p
                   style={{
-                    fontFamily: "'Source Serif 4', Georgia, serif",
+                    fontFamily: "'DM Sans', sans-serif",
                     fontSize: 15,
-                    color: "#444",
+                    color: "#555",
                     lineHeight: 1.8,
                     margin: 0,
                   }}
@@ -1103,92 +1473,73 @@ export default function DarkQuiz() {
                   style={{
                     marginTop: 20,
                     padding: "14px 18px",
-                    background: "rgba(180,160,130,0.08)",
+                    background: "rgba(202,255,75,0.1)",
                     borderRadius: 12,
-                    borderLeft: "3px solid #b4a082",
+                    borderLeft: "3px solid #CAFF4B",
                     display: "flex",
                     alignItems: "baseline",
                     gap: 8,
                   }}
                 >
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#b4a082", whiteSpace: "nowrap" }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "#3B6D11",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     Timeline
                   </span>
                   <span style={{ fontSize: 14, color: "#555" }}>
-                    <strong>{result.timeline}</strong> — {result.timelineNote}
+                    <strong>{result.timeline}</strong> with consistent daily use
                   </span>
                 </div>
               </div>
 
-              {/* Your DARK Products */}
-              {result.products && (
-                <>
-                  <h3
-                    style={{
-                      fontFamily: "'Source Serif 4', Georgia, serif",
-                      fontSize: 22,
-                      fontWeight: 700,
-                      color: "#1a1a1a",
-                      margin: "36px 0 6px",
-                    }}
-                  >
-                    Your DARK system
-                  </h3>
-                  <p style={{ fontSize: 14, color: "#aaa", margin: "0 0 16px" }}>
-                    {result.products.length} products selected for your {result.label.toLowerCase()} profile.
-                  </p>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 32 }}>
-                    {result.products.map((p, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          background: "#1a1a1a",
-                          color: "#fff",
-                          padding: "10px 16px",
-                          borderRadius: 10,
-                          fontSize: 12,
-                          fontWeight: 700,
-                          letterSpacing: "0.06em",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
-                        <span style={{ color: "#b4a082" }}>◆</span>
-                        {p.tag}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* Routine */}
+              {/* Recommended Routine */}
               <h3
                 style={{
-                  fontFamily: "'Source Serif 4', Georgia, serif",
+                  fontFamily: "'Playfair Display', Georgia, serif",
                   fontSize: 22,
                   fontWeight: 700,
-                  color: "#1a1a1a",
-                  margin: "0 0 6px",
+                  color: "#1A1410",
+                  margin: "32px 0 6px",
                 }}
               >
-                Your prescribed routine
+                Your recommended routine
               </h3>
-              <p style={{ fontSize: 14, color: "#aaa", margin: "0 0 20px" }}>
-                When to use each product and why it works for your specific profile.
+              <p
+                style={{
+                  fontSize: 14,
+                  color: "#aaa",
+                  margin: "0 0 16px",
+                }}
+              >
+                {result.products.length} product{result.products.length > 1 ? "s" : ""} selected for your {result.segment.toLowerCase()} profile.
               </p>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {result.routine.map((item, i) => (
+              {/* Product cards */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                  marginBottom: 12,
+                }}
+              >
+                {result.products.map((p, i) => (
                   <div
                     key={i}
                     className={`result-card fade-up stagger-${Math.min(i + 1, 5)}`}
                     style={{
                       padding: "18px 20px",
                       display: "flex",
-                      gap: 16,
-                      alignItems: "flex-start",
-                      borderLeft: item.product ? "3px solid #1a1a1a" : "3px solid transparent",
+                      gap: 14,
+                      alignItems: "center",
+                      borderLeft: "3px solid #CAFF4B",
                     }}
                   >
                     <div
@@ -1196,81 +1547,120 @@ export default function DarkQuiz() {
                         width: 40,
                         height: 40,
                         borderRadius: 10,
-                        background:
-                          item.time === "AM"
-                            ? "linear-gradient(135deg, #FFF3E0, #FFE0B2)"
-                            : item.time === "PM"
-                            ? "linear-gradient(135deg, #E8EAF6, #C5CAE9)"
-                            : "linear-gradient(135deg, #E8F5E9, #C8E6C9)",
+                        background: i === 0
+                          ? "linear-gradient(135deg, #FFF3E0, #FFE0B2)"
+                          : i === 1
+                          ? "linear-gradient(135deg, #E8EAF6, #C5CAE9)"
+                          : "linear-gradient(135deg, #E8F5E9, #C8E6C9)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         fontSize: 10,
                         fontWeight: 800,
-                        color: item.time === "AM" ? "#E65100" : item.time === "PM" ? "#283593" : "#2E7D32",
+                        color: i === 0 ? "#E65100" : i === 1 ? "#283593" : "#2E7D32",
                         letterSpacing: "0.06em",
                         flexShrink: 0,
                       }}
                     >
-                      {item.time}
+                      {i === 0 ? "AM" : "PM"}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-                        <p
-                          style={{
-                            fontSize: 15,
-                            fontWeight: 700,
-                            color: "#1a1a1a",
-                            margin: 0,
-                          }}
-                        >
-                          {item.name}
-                        </p>
-                        {item.product && (
-                          <span style={{
-                            background: "rgba(180,160,130,0.15)",
-                            color: "#8a7a66",
-                            padding: "2px 8px",
-                            borderRadius: 100,
-                            fontSize: 10,
-                            fontWeight: 700,
-                            letterSpacing: "0.06em",
-                          }}>
-                            DARK
-                          </span>
-                        )}
-                      </div>
                       <p
                         style={{
-                          fontFamily: "'Source Serif 4', Georgia, serif",
-                          fontSize: 13,
-                          color: "#888",
+                          fontSize: 15,
+                          fontWeight: 700,
+                          color: "#1A1410",
                           margin: 0,
-                          lineHeight: 1.7,
                         }}
                       >
-                        {item.role}
+                        {p.name}
                       </p>
+                      <span
+                        style={{
+                          background: "rgba(202,255,75,0.2)",
+                          color: "#3B6D11",
+                          padding: "2px 8px",
+                          borderRadius: 100,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: "0.06em",
+                        }}
+                      >
+                        DARK
+                      </span>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Answers recap */}
-              <div style={{ marginTop: 36, marginBottom: 36 }}>
-                <h3
+              {/* Routine rationale */}
+              <div
+                className="result-card"
+                style={{
+                  padding: "16px 20px",
+                  marginBottom: 24,
+                  background: "rgba(250,247,242,0.8)",
+                }}
+              >
+                <p
                   style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: "#b4a082",
-                    margin: "0 0 16px",
+                    fontSize: 13,
+                    color: "#777",
+                    lineHeight: 1.7,
+                    margin: 0,
+                    fontStyle: "italic",
                   }}
                 >
-                  Your responses
-                </h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {result.routineRationale}
+                </p>
+              </div>
+
+              {/* Answer Recap — Accordion */}
+              <div style={{ marginBottom: 24 }}>
+                <button
+                  onClick={() => setRecapOpen(!recapOpen)}
+                  style={{
+                    width: "100%",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "12px 0",
+                    borderBottom: "1px solid rgba(26,20,16,0.06)",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      color: "#8a7a66",
+                    }}
+                  >
+                    Your responses
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 18,
+                      color: "#aaa",
+                      transition: "transform 0.3s ease",
+                      display: "inline-block",
+                      transform: recapOpen ? "rotate(180deg)" : "rotate(0deg)",
+                    }}
+                  >
+                    ▾
+                  </span>
+                </button>
+                <div
+                  style={{
+                    maxHeight: recapOpen ? 500 : 0,
+                    overflow: "hidden",
+                    transition: "max-height 0.4s ease",
+                  }}
+                >
                   {questions.map((q) => {
                     const ans = answers[q.id];
                     const opt = q.options.find((o) => o.value === ans);
@@ -1283,11 +1673,22 @@ export default function DarkQuiz() {
                           justifyContent: "space-between",
                           alignItems: "center",
                           padding: "10px 0",
-                          borderBottom: "1px solid rgba(0,0,0,0.04)",
+                          borderBottom: "1px solid rgba(26,20,16,0.04)",
                         }}
                       >
-                        <span style={{ fontSize: 13, color: "#999" }}>{q.question}</span>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "#555", textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
+                        <span style={{ fontSize: 13, color: "#999" }}>
+                          {q.question}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: "#555",
+                            textAlign: "right",
+                            flexShrink: 0,
+                            marginLeft: 12,
+                          }}
+                        >
                           {opt.label} (+{opt.score})
                         </span>
                       </div>
@@ -1296,22 +1697,59 @@ export default function DarkQuiz() {
                 </div>
               </div>
 
+              {/* 60-Day Guarantee */}
+              <div
+                style={{
+                  background: "rgba(202,255,75,0.08)",
+                  border: "1px solid rgba(202,255,75,0.3)",
+                  borderRadius: 16,
+                  padding: "24px 28px",
+                  textAlign: "center",
+                  marginBottom: 24,
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "#3B6D11",
+                    margin: "0 0 8px",
+                  }}
+                >
+                  60-Day Guarantee
+                </p>
+                <p
+                  style={{
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    fontSize: 18,
+                    fontWeight: 600,
+                    color: "#1A1410",
+                    margin: 0,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Use it for 60 days. See real progress or get every dollar back.
+                </p>
+              </div>
+
               {/* ── Purchase Section ── */}
               <div
                 style={{
-                  background: "#1a1a1a",
+                  background: "#1A1410",
                   borderRadius: 24,
                   padding: "36px 28px",
                   position: "relative",
                   overflow: "hidden",
                 }}
               >
-                {/* Subtle pattern */}
                 <div
                   style={{
                     position: "absolute",
                     inset: 0,
-                    background: "radial-gradient(circle at 20% 50%, rgba(180,160,130,0.08) 0%, transparent 60%)",
+                    background:
+                      "radial-gradient(circle at 20% 50%, rgba(202,255,75,0.06) 0%, transparent 60%)",
                     pointerEvents: "none",
                   }}
                 />
@@ -1322,7 +1760,7 @@ export default function DarkQuiz() {
                     fontWeight: 700,
                     letterSpacing: "0.12em",
                     textTransform: "uppercase",
-                    color: "#b4a082",
+                    color: "#CAFF4B",
                     margin: "0 0 12px",
                     position: "relative",
                     textAlign: "center",
@@ -1331,36 +1769,68 @@ export default function DarkQuiz() {
                   Your system is ready
                 </p>
 
-                <h3
+                {/* Products included */}
+                <div
                   style={{
-                    fontFamily: "'Source Serif 4', Georgia, serif",
-                    fontSize: 26,
-                    fontWeight: 700,
-                    color: "#fff",
-                    margin: "0 0 8px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                    marginBottom: 24,
                     position: "relative",
-                    textAlign: "center",
                   }}
                 >
-                  Start your transformation.
-                </h3>
-                <p style={{ fontSize: 14, color: "#777", margin: "0 0 28px", position: "relative", lineHeight: 1.5, textAlign: "center" }}>
-                  Every product calibrated to your clinical profile.
-                </p>
-
-                {/* Products included */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24, position: "relative" }}>
-                  {result.products && result.products.map((p, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "rgba(255,255,255,0.05)", borderRadius: 12 }}>
-                      <span style={{ color: "#b4a082", fontSize: 14 }}>✓</span>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>{p.name}</span>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: "rgba(255,255,255,0.3)", marginLeft: "auto" }}>30ml</span>
+                  {result.products.map((p, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "10px 14px",
+                        background: "rgba(255,255,255,0.05)",
+                        borderRadius: 12,
+                      }}
+                    >
+                      <span style={{ color: "#CAFF4B", fontSize: 14 }}>
+                        ✓
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: 14,
+                          color: "rgba(255,255,255,0.7)",
+                          fontWeight: 500,
+                        }}
+                      >
+                        {p.name}
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: 11,
+                          color: "rgba(255,255,255,0.3)",
+                          marginLeft: "auto",
+                        }}
+                      >
+                        30ml
+                      </span>
                     </div>
                   ))}
                 </div>
 
                 {/* Subscribe / One-Time Toggle */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 0, marginBottom: 20, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, overflow: "hidden", position: "relative" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 0,
+                    marginBottom: 20,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 14,
+                    overflow: "hidden",
+                    position: "relative",
+                  }}
+                >
                   {/* Subscribe option */}
                   <div
                     onClick={() => setIsSubscription(true)}
@@ -1370,32 +1840,110 @@ export default function DarkQuiz() {
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "flex-start",
-                      background: isSubscription ? "rgba(255,255,255,0.06)" : "transparent",
+                      background: isSubscription
+                        ? "rgba(255,255,255,0.06)"
+                        : "transparent",
                       borderBottom: "1px solid rgba(255,255,255,0.08)",
                       transition: "background 0.2s ease",
                     }}
                   >
-                    <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                      <div style={{
-                        width: 20, height: 20, borderRadius: "50%", marginTop: 2,
-                        border: isSubscription ? "6px solid #b4a082" : "2px solid rgba(255,255,255,0.25)",
-                        background: isSubscription ? "#1a1a1a" : "transparent", flexShrink: 0,
-                        transition: "all 0.2s ease",
-                      }} />
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 12,
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          marginTop: 2,
+                          border: isSubscription
+                            ? "6px solid #CAFF4B"
+                            : "2px solid rgba(255,255,255,0.25)",
+                          background: isSubscription
+                            ? "#1A1410"
+                            : "transparent",
+                          flexShrink: 0,
+                          transition: "all 0.2s ease",
+                        }}
+                      />
                       <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 700, color: "#fff" }}>Subscribe & Save</span>
-                          <span style={{ background: "#b4a082", color: "#1a1a1a", padding: "2px 8px", borderRadius: 100, fontSize: 10, fontWeight: 800 }}>BEST VALUE</span>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            marginBottom: 4,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontFamily: "'DM Sans', sans-serif",
+                              fontSize: 15,
+                              fontWeight: 700,
+                              color: "#fff",
+                            }}
+                          >
+                            Subscribe &amp; Save
+                          </span>
+                          <span
+                            style={{
+                              background: "#CAFF4B",
+                              color: "#1A1410",
+                              padding: "2px 8px",
+                              borderRadius: 100,
+                              fontSize: 10,
+                              fontWeight: 800,
+                            }}
+                          >
+                            BEST VALUE
+                          </span>
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.35)" }}>◎ Auto-refill every 60 days</span>
-                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.35)" }}>◎ Cancel or pause anytime</span>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 2,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontFamily: "'DM Sans', sans-serif",
+                              fontSize: 12,
+                              color: "rgba(255,255,255,0.35)",
+                            }}
+                          >
+                            Auto-refill every 60 days
+                          </span>
+                          <span
+                            style={{
+                              fontFamily: "'DM Sans', sans-serif",
+                              fontSize: 12,
+                              color: "rgba(255,255,255,0.35)",
+                            }}
+                          >
+                            Cancel or pause anytime
+                          </span>
                         </div>
                       </div>
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 20, fontWeight: 800, color: "#fff" }}>$79</span>
-                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textDecoration: "line-through" }}>$99</div>
+                      <span
+                        style={{
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: 20,
+                          fontWeight: 800,
+                          color: "#fff",
+                        }}
+                      >
+                        ${result.priceSub}
+                      </span>
+                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>
+                        /month
+                      </div>
                     </div>
                   </div>
 
@@ -1408,37 +1956,82 @@ export default function DarkQuiz() {
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      background: !isSubscription ? "rgba(255,255,255,0.06)" : "transparent",
+                      background: !isSubscription
+                        ? "rgba(255,255,255,0.06)"
+                        : "transparent",
                       transition: "background 0.2s ease",
                     }}
                   >
-                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                      <div style={{
-                        width: 20, height: 20, borderRadius: "50%",
-                        border: !isSubscription ? "6px solid #b4a082" : "2px solid rgba(255,255,255,0.25)",
-                        background: !isSubscription ? "#1a1a1a" : "transparent", flexShrink: 0,
-                        transition: "all 0.2s ease",
-                      }} />
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 600, color: !isSubscription ? "#fff" : "rgba(255,255,255,0.4)" }}>One-Time Purchase</span>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 12,
+                        alignItems: "center",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          border: !isSubscription
+                            ? "6px solid #CAFF4B"
+                            : "2px solid rgba(255,255,255,0.25)",
+                          background: !isSubscription
+                            ? "#1A1410"
+                            : "transparent",
+                          flexShrink: 0,
+                          transition: "all 0.2s ease",
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: 15,
+                          fontWeight: 600,
+                          color: !isSubscription
+                            ? "#fff"
+                            : "rgba(255,255,255,0.4)",
+                        }}
+                      >
+                        One-Time Purchase
+                      </span>
                     </div>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 18, fontWeight: !isSubscription ? 800 : 500, color: !isSubscription ? "#fff" : "rgba(255,255,255,0.4)" }}>$99</span>
+                    <span
+                      style={{
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontSize: 18,
+                        fontWeight: !isSubscription ? 800 : 500,
+                        color: !isSubscription
+                          ? "#fff"
+                          : "rgba(255,255,255,0.4)",
+                      }}
+                    >
+                      ${result.priceOneTime}
+                    </span>
                   </div>
                 </div>
 
-                {/* Add to Cart / Added confirmation */}
+                {/* Add to Cart / Checkout */}
                 {!addedToCart ? (
                   <button
                     onClick={async () => {
                       setCartLoading(true);
+                      const price = isSubscription
+                        ? result.priceSub
+                        : result.priceOneTime;
+                      const productName = result.products
+                        .map((p) => p.tag)
+                        .join(" + ");
                       trackAddToCart(
-                        isSubscription ? "3-Serum System Bundle (Subscription)" : "3-Serum System Bundle",
-                        isSubscription ? 79 : 99
+                        isSubscription
+                          ? `${productName} (Subscription)`
+                          : productName,
+                        price
                       );
                       try {
-                        const line = isSubscription
-                          ? { merchandiseId: VARIANTS.BUNDLE, quantity: 1, sellingPlanId: SELLING_PLANS.BUNDLE_MONTHLY }
-                          : { merchandiseId: VARIANTS.BUNDLE, quantity: 1 };
-                        const shopifyCart = await createCart([line]);
+                        const lines = getCartLines();
+                        const shopifyCart = await createCart(lines);
                         setCheckoutUrl(shopifyCart.checkoutUrl);
                         setAddedToCart(true);
                       } catch (err) {
@@ -1450,46 +2043,55 @@ export default function DarkQuiz() {
                     disabled={cartLoading}
                     style={{
                       width: "100%",
-                      background: "#fff",
-                      color: "#1a1a1a",
+                      background: "#CAFF4B",
+                      color: "#1A1410",
                       border: "none",
                       padding: "18px",
                       borderRadius: 100,
                       fontSize: 15,
                       fontWeight: 800,
                       fontFamily: "'DM Sans', sans-serif",
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
                       cursor: cartLoading ? "not-allowed" : "pointer",
                       position: "relative",
                       transition: "all 0.2s ease",
-                      boxShadow: "0 4px 16px rgba(255,255,255,0.1)",
                       opacity: cartLoading ? 0.7 : 1,
                     }}
                   >
-                    {cartLoading ? "Adding…" : `Add to Cart — $${isSubscription ? 79 : 99}`}
+                    {cartLoading
+                      ? "Adding…"
+                      : isSubscription
+                      ? `Subscribe & save — $${result.priceSub}/month`
+                      : `Get my routine — $${result.priceOneTime}`}
                   </button>
                 ) : (
                   <div style={{ position: "relative" }}>
                     <div
                       style={{
                         width: "100%",
-                        background: "#b4a082",
-                        color: "#1a1a1a",
+                        background: "#CAFF4B",
+                        color: "#1A1410",
                         padding: "18px",
                         borderRadius: 100,
                         fontSize: 15,
                         fontWeight: 800,
                         fontFamily: "'DM Sans', sans-serif",
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
                         textAlign: "center",
                       }}
                     >
                       ✓ Added to Cart
                     </div>
                     <button
-                      onClick={() => { trackInitiateCheckout(isSubscription ? 79 : 99); checkoutUrl && window.location.assign(checkoutUrl); }}
+                      onClick={() => {
+                        trackInitiateCheckout(
+                          isSubscription
+                            ? result.priceSub
+                            : result.priceOneTime
+                        );
+                        checkoutUrl &&
+                          window.location.assign(checkoutUrl);
+                      }}
                       style={{
                         display: "block",
                         width: "100%",
@@ -1515,20 +2117,65 @@ export default function DarkQuiz() {
                 )}
 
                 {/* Trust signals */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginTop: 16, position: "relative", flexWrap: "wrap" }}>
-                  {["Free shipping", "60-day guarantee", "Cancel anytime"].map((item) => (
-                    <span key={item} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 500 }}>
-                      ✓ {item}
-                    </span>
-                  ))}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 20,
+                    marginTop: 16,
+                    position: "relative",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {["Free shipping", "60-day guarantee", "Cancel anytime"].map(
+                    (item) => (
+                      <span
+                        key={item}
+                        style={{
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: 11,
+                          color: "rgba(255,255,255,0.3)",
+                          fontWeight: 500,
+                        }}
+                      >
+                        ✓ {item}
+                      </span>
+                    )
+                  )}
                 </div>
               </div>
 
+              {/* Brand closing line */}
+              <p
+                style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontSize: 16,
+                  fontStyle: "italic",
+                  color: "#999",
+                  textAlign: "center",
+                  marginTop: 36,
+                  lineHeight: 1.6,
+                }}
+              >
+                You didn&apos;t choose this. But you get to choose what you do next.
+              </p>
+
               {/* Disclaimer */}
-              <p style={{ fontSize: 11, color: "#ccc", textAlign: "center", marginTop: 24, lineHeight: 1.6 }}>
-                This assessment is for educational purposes and does not replace professional medical advice.
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "#ccc",
+                  textAlign: "center",
+                  marginTop: 16,
+                  lineHeight: 1.6,
+                }}
+              >
+                This assessment is for educational purposes and does not replace
+                professional medical advice.
                 <br />
-                Results vary by individual. Consult a dermatologist for persistent conditions.
+                Results vary by individual. Consult a dermatologist for persistent
+                conditions.
               </p>
             </div>
           )}
